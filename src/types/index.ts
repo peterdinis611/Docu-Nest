@@ -23,7 +23,34 @@ export type StudioOutputStatus = "idle" | "generating" | "ready"
 export interface Notebook {
   id: string
   title: string
+  description?: string
   updatedAt: string
+  sourceCount: number
+  messageCount: number
+  color: string
+  tags?: string[]
+}
+
+export interface ActivityItem {
+  id: string
+  type: "chat" | "upload" | "studio" | "note"
+  title: string
+  notebookTitle: string
+  timestamp: string
+}
+
+export interface UsageMetric {
+  label: string
+  value: number
+  change: number
+  unit?: string
+}
+
+export interface WeeklyActivity {
+  day: string
+  chats: number
+  uploads: number
+  studio: number
 }
 
 export interface SourceDocument {

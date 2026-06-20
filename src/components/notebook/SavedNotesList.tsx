@@ -8,20 +8,20 @@ interface SavedNotesListProps {
 export function SavedNotesList({ notes }: SavedNotesListProps) {
   return (
     <div className="space-y-2">
-      <p className="px-1 text-xs font-medium text-muted-foreground">
-        Saved notes
-      </p>
+      <p className="text-xs font-medium text-muted-foreground">Saved notes</p>
       {notes.map((note) => (
         <button
           key={note.id}
           type="button"
-          className="w-full rounded-lg border bg-card px-3 py-2.5 text-left transition-colors hover:bg-accent"
+          className="w-full rounded-xl border border-border/60 bg-background px-3.5 py-3 text-left transition-all hover:border-primary/25 hover:shadow-sm"
         >
-          <div className="flex items-start gap-2">
-            <StickyNote className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+          <div className="flex items-start gap-2.5">
+            <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
+              <StickyNote className="size-3.5 text-amber-600 dark:text-amber-400" />
+            </div>
             <div className="min-w-0">
               <p className="text-sm font-medium">{note.title}</p>
-              <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">
+              <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
                 {note.excerpt}
               </p>
             </div>

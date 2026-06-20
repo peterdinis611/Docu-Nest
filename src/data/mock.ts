@@ -1,23 +1,111 @@
 import type {
+  ActivityItem,
   ChatMessage,
   Notebook,
   SavedNote,
   SourceDocument,
   StudioOutput,
   StudioOutputType,
+  UsageMetric,
+  WeeklyActivity,
 } from "@/types"
 
 export const mockNotebooks: Notebook[] = [
   {
     id: "nb-1",
     title: "Transformer & RAG Research",
+    description: "Architecture papers, retrieval patterns, and citation policy",
     updatedAt: "2026-06-14T10:00:00Z",
+    sourceCount: 4,
+    messageCount: 23,
+    color: "from-blue-500/20 to-indigo-500/10",
+    tags: ["research", "ml"],
   },
   {
     id: "nb-2",
     title: "Product Notes — DocuNest",
+    description: "Feature specs, UX flows, and competitive analysis",
     updatedAt: "2026-06-12T18:30:00Z",
+    sourceCount: 6,
+    messageCount: 41,
+    color: "from-emerald-500/20 to-teal-500/10",
+    tags: ["product", "design"],
   },
+  {
+    id: "nb-3",
+    title: "Legal Contract Review",
+    description: "MSA drafts, SLA terms, and compliance checklists",
+    updatedAt: "2026-06-11T09:15:00Z",
+    sourceCount: 3,
+    messageCount: 12,
+    color: "from-amber-500/20 to-orange-500/10",
+    tags: ["legal"],
+  },
+  {
+    id: "nb-4",
+    title: "Customer Interviews Q2",
+    description: "Transcripts and synthesis from 8 user research sessions",
+    updatedAt: "2026-06-09T14:00:00Z",
+    sourceCount: 8,
+    messageCount: 67,
+    color: "from-violet-500/20 to-purple-500/10",
+    tags: ["research", "ux"],
+  },
+]
+
+export const mockActivity: ActivityItem[] = [
+  {
+    id: "act-1",
+    type: "chat",
+    title: "Asked about Transformer parallelization",
+    notebookTitle: "Transformer & RAG Research",
+    timestamp: "2026-06-14T10:00:00Z",
+  },
+  {
+    id: "act-2",
+    type: "studio",
+    title: "Generated Audio Overview",
+    notebookTitle: "Transformer & RAG Research",
+    timestamp: "2026-06-14T09:30:00Z",
+  },
+  {
+    id: "act-3",
+    type: "upload",
+    title: "Uploaded NotebookLM Feature Overview",
+    notebookTitle: "Transformer & RAG Research",
+    timestamp: "2026-06-13T16:45:00Z",
+  },
+  {
+    id: "act-4",
+    type: "note",
+    title: "Saved citation format rules",
+    notebookTitle: "Transformer & RAG Research",
+    timestamp: "2026-06-13T11:00:00Z",
+  },
+  {
+    id: "act-5",
+    type: "chat",
+    title: "Compared onboarding flows",
+    notebookTitle: "Product Notes — DocuNest",
+    timestamp: "2026-06-12T18:30:00Z",
+  },
+]
+
+export const mockUsageMetrics: UsageMetric[] = [
+  { label: "Questions asked", value: 143, change: 12 },
+  { label: "Sources indexed", value: 21, change: 4 },
+  { label: "Studio outputs", value: 18, change: 6 },
+  { label: "Hours saved", value: 9.5, change: 2.1, unit: "h" },
+]
+
+export const mockWeeklyActivity: WeeklyActivity[] = [
+  { day: "Mon", chats: 12, uploads: 2, studio: 3 },
+  { day: "Tue", chats: 18, uploads: 1, studio: 5 },
+  { day: "Wed", chats: 8, uploads: 3, studio: 2 },
+  { day: "Thu", chats: 22, uploads: 0, studio: 4 },
+  { day: "Fri", chats: 15, uploads: 2, studio: 1 },
+  { day: "Sat", chats: 6, uploads: 0, studio: 2 },
+  { day: "Sun", chats: 4, uploads: 1, studio: 1 },
 ]
 
 export const mockDocuments: SourceDocument[] = [
@@ -57,6 +145,49 @@ export const mockDocuments: SourceDocument[] = [
       "Product page describing document upload, Q&A, and audio overview features.",
     uploadedAt: "2026-06-13T16:45:00Z",
     enabled: true,
+  },
+]
+
+export const mockAllDocuments: (SourceDocument & {
+  notebookId: string
+  notebookTitle: string
+})[] = [
+  ...mockDocuments.map((d) => ({
+    ...d,
+    notebookId: "nb-1",
+    notebookTitle: "Transformer & RAG Research",
+  })),
+  {
+    id: "doc-5",
+    title: "DocuNest PRD v2",
+    type: "pdf" as const,
+    description: "Product requirements for source-grounded notebook assistant.",
+    pageCount: 24,
+    uploadedAt: "2026-06-08T10:00:00Z",
+    enabled: true,
+    notebookId: "nb-2",
+    notebookTitle: "Product Notes — DocuNest",
+  },
+  {
+    id: "doc-6",
+    title: "Competitive Landscape",
+    type: "article" as const,
+    description: "Analysis of NotebookLM, Perplexity Spaces, and similar tools.",
+    uploadedAt: "2026-06-07T14:00:00Z",
+    enabled: true,
+    notebookId: "nb-2",
+    notebookTitle: "Product Notes — DocuNest",
+  },
+  {
+    id: "doc-7",
+    title: "MSA Template 2026",
+    type: "pdf" as const,
+    description: "Standard master services agreement with liability caps.",
+    pageCount: 18,
+    uploadedAt: "2026-06-05T11:00:00Z",
+    enabled: true,
+    notebookId: "nb-3",
+    notebookTitle: "Legal Contract Review",
   },
 ]
 
