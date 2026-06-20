@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react"
 import {
   FileText,
   Globe,
@@ -5,6 +6,7 @@ import {
   NotebookPen,
   Plus,
   ScrollText,
+  Search,
   Upload,
 } from "lucide-react"
 import { AddSourceDialog } from "@/components/dialogs/AddSourceDialog"
@@ -12,8 +14,16 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { createFuseIndex, searchFuse } from "@/hooks/useFuseSearch"
 import { cn } from "@/lib/utils"
 import type { DocumentType, SourceDocument } from "@/types"
+
+const sourceFuseOptions = {
+  keys: ["title", "description", "type"],
+  threshold: 0.35,
+  ignoreLocation: true,
+  minMatchCharLength: 1,
+}
 
 const typeConfig: Record<
   DocumentType,
@@ -54,7 +64,18 @@ export function SourcesPanel({
   onToggleDocument,
   onSelectDocument,
 }: SourcesPanelProps) {
+  const [query, setQuery] = useState("")
   const enabledCount = documents.filter((d) => d.enabled).length
+
+  const fuse = useMemo(
+    () => createFuseIndex(documents, sourceFuseOptions),
+    [documents]
+  )
+
+  const filtered = useMemo(
+    () => searchFuse(fuse, query, documents),
+    [fuse, query, documents]
+  )
 
   return (
     <aside className="flex h-full w-72 shrink-0 flex-col border-r bg-card">
@@ -70,94 +91,111 @@ export function SourcesPanel({
         </Badge>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 px-4 pb-4">
-        <AddSourceDialog
-          trigger={
-            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-              <Plus className="size-3.5" />
-              Add
-            </Button>
-          }
-        />
-        <AddSourceDialog
-          trigger={
-            <Button size="sm" className="h-8 gap-1.5 text-xs">
-              <Upload className="size-3.5" />
-              Upload
-            </Button>
-          }
-        />
+      <div className="space-y-2 px-4 pb-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter sources…"
+            className="h-8 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-xs outline-none ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <AddSourceDialog
+            trigger={
+              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+                <Plus className="size-3.5" />
+                Add
+              </Button>
+            }
+          />
+          <AddSourceDialog
+            trigger={
+              <Button size="sm" className="h-8 gap-1.5 text-xs">
+                <Upload className="size-3.5" />
+                Upload
+              </Button>
+            }
+          />
+        </div>
       </div>
 
       <ScrollArea className="flex-1">
         <div className="space-y-2 px-3 pb-4">
-          {documents.map((doc) => {
-            const config = typeConfig[doc.type]
-            const Icon = config.icon
-            const isPreviewing = selectedDocumentId === doc.id
+          {filtered.length === 0 ? (
+            <p className="px-2 py-8 text-center text-xs text-muted-foreground">
+              No sources match your search
+            </p>
+          ) : (
+            filtered.map((doc) => {
+              const config = typeConfig[doc.type]
+              const Icon = config.icon
+              const isPreviewing = selectedDocumentId === doc.id
 
-            return (
-              <div
-                key={doc.id}
-                className={cn(
-                  "group rounded-xl border p-3 transition-all",
-                  isPreviewing
-                    ? "border-primary/40 bg-primary/5 shadow-sm"
-                    : doc.enabled
-                      ? "border-border/60 bg-background hover:border-primary/25 hover:shadow-sm"
-                      : "border-border/40 bg-muted/30 opacity-60"
-                )}
-              >
-                <div className="flex items-start gap-2.5">
-                  <Checkbox
-                    checked={doc.enabled}
-                    onCheckedChange={() => onToggleDocument(doc.id)}
-                    className="mt-1"
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onSelectDocument(isPreviewing ? null : doc.id)
-                    }
-                    className="min-w-0 flex-1 text-left"
-                  >
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <div
-                          className={cn(
-                            "flex size-6 items-center justify-center rounded-md",
-                            config.color
-                          )}
-                        >
-                          <Icon className="size-3.5" />
+              return (
+                <div
+                  key={doc.id}
+                  className={cn(
+                    "group rounded-xl border p-3 transition-all",
+                    isPreviewing
+                      ? "border-primary/40 bg-primary/5 shadow-sm"
+                      : doc.enabled
+                        ? "border-border/60 bg-background hover:border-primary/25 hover:shadow-sm"
+                        : "border-border/40 bg-muted/30 opacity-60"
+                  )}
+                >
+                  <div className="flex items-start gap-2.5">
+                    <Checkbox
+                      checked={doc.enabled}
+                      onCheckedChange={() => onToggleDocument(doc.id)}
+                      className="mt-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onSelectDocument(isPreviewing ? null : doc.id)
+                      }
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <div
+                            className={cn(
+                              "flex size-6 items-center justify-center rounded-md",
+                              config.color
+                            )}
+                          >
+                            <Icon className="size-3.5" />
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className="h-5 px-1.5 text-[10px] font-normal"
+                          >
+                            {config.label}
+                          </Badge>
                         </div>
-                        <Badge
-                          variant="outline"
-                          className="h-5 px-1.5 text-[10px] font-normal"
-                        >
-                          {config.label}
-                        </Badge>
+                        {isPreviewing && (
+                          <Link2 className="size-3 text-primary" />
+                        )}
                       </div>
-                      {isPreviewing && (
-                        <Link2 className="size-3 text-primary" />
-                      )}
-                    </div>
-                    <p className="text-sm font-medium leading-snug">
-                      {doc.title}
-                    </p>
-                    <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
-                      {doc.description}
-                    </p>
-                    {doc.pageCount && (
-                      <p className="mt-1.5 text-[10px] text-muted-foreground/70">
-                        {doc.pageCount} pages
+                      <p className="text-sm font-medium leading-snug">
+                        {doc.title}
                       </p>
-                    )}
-                  </button>
+                      <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
+                        {doc.description}
+                      </p>
+                      {doc.pageCount && (
+                        <p className="mt-1.5 text-[10px] text-muted-foreground/70">
+                          {doc.pageCount} pages
+                        </p>
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })
+          )}
         </div>
       </ScrollArea>
     </aside>

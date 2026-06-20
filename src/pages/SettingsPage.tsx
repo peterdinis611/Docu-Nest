@@ -10,7 +10,7 @@ import {
 } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
-import { useTheme } from "@/context/ThemeProvider"
+import { useTheme } from "@/hooks/useTheme"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"

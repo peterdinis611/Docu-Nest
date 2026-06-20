@@ -47,7 +47,7 @@ export function AppLayout() {
             >
               <PanelLeft className="size-4" />
             </Button>
-            <Link to="/" className="flex items-center gap-2 text-sm font-semibold">
+            <Link to="/app" className="flex items-center gap-2 text-sm font-semibold">
               <div className="flex size-7 items-center justify-center rounded-md bg-primary">
                 <Sparkles className="size-3.5 text-primary-foreground" />
               </div>

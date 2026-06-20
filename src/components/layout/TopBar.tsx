@@ -5,6 +5,7 @@ import {
   PanelLeft,
   PanelRight,
   Share2,
+  Search,
   Sparkles,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -18,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { ShareNotebookDialog } from "@/components/dialogs/ShareNotebookDialog"
+import { useSearch } from "@/hooks/useSearch"
 import { cn } from "@/lib/utils"
 import type { Notebook } from "@/types"
 
@@ -44,6 +46,8 @@ export function TopBar({
   onToggleSources,
   onToggleStudio,
 }: TopBarProps) {
+  const { openSearch } = useSearch()
+
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b bg-card/80 px-4 backdrop-blur-md">
       <div className="flex items-center gap-1.5">
@@ -53,7 +57,7 @@ export function TopBar({
           className="size-8 text-muted-foreground hover:text-foreground"
           asChild
         >
-          <Link to="/">
+          <Link to="/app">
             <Home className="size-4" />
           </Link>
         </Button>
@@ -105,7 +109,7 @@ export function TopBar({
             ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link to="/" className="text-primary">
+              <Link to="/app" className="text-primary">
                 View all notebooks
               </Link>
             </DropdownMenuItem>
@@ -131,6 +135,16 @@ export function TopBar({
             </Button>
           }
         />
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8 text-muted-foreground"
+          onClick={openSearch}
+          aria-label="Search"
+        >
+          <Search className="size-4" />
+        </Button>
 
         <ThemeToggle />
 

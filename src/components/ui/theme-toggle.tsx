@@ -11,7 +11,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { useTheme, type Theme } from "@/context/ThemeProvider"
+import { useTheme, type Theme } from "@/hooks/useTheme"
 import { cn } from "@/lib/utils"
 
 const options: { value: Theme; label: string; icon: typeof Sun }[] = [
