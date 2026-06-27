@@ -12,14 +12,6 @@ function getSystemTheme(): ResolvedTheme {
     : "light"
 }
 
-function getStoredTheme(): Theme {
-  if (typeof window === "undefined") return "system"
-  const stored = localStorage.getItem(STORAGE_KEY)
-  if (stored === "light" || stored === "dark" || stored === "system")
-    return stored
-  return "system"
-}
-
 function resolve(theme: Theme): ResolvedTheme {
   return theme === "system" ? getSystemTheme() : theme
 }
@@ -28,9 +20,6 @@ function applyToDom(resolved: ResolvedTheme) {
   if (typeof document === "undefined") return
   document.documentElement.classList.toggle("dark", resolved === "dark")
 }
-
-const initialTheme = getStoredTheme()
-const initialResolved = resolve(initialTheme)
 
 export interface ThemeContext {
   theme: Theme
@@ -70,10 +59,10 @@ export const themeMachine = setup({
   },
 }).createMachine({
   id: "theme",
-  initial: initialTheme === "system" ? "watchingSystem" : "fixed",
+  initial: "watchingSystem",
   context: {
-    theme: initialTheme,
-    resolvedTheme: initialResolved,
+    theme: "system",
+    resolvedTheme: "light",
   },
 
   states: {

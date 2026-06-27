@@ -7,6 +7,12 @@ import { Sidebar } from "@/components/layout/Sidebar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
+export interface SidebarNotebook {
+  id: string
+  title: string
+  color: string
+}
+
 const STORAGE_KEY = "docunest-sidebar-open"
 
 function getInitialOpen() {
@@ -17,7 +23,13 @@ function getInitialOpen() {
   return true
 }
 
-export function AppLayout({ children }: { children: React.ReactNode }) {
+export function AppLayout({
+  children,
+  recentNotebooks = [],
+}: {
+  children: React.ReactNode
+  recentNotebooks?: SidebarNotebook[]
+}) {
   const [sidebarOpen, setSidebarOpen] = useState(getInitialOpen)
 
   useEffect(() => {
@@ -32,7 +44,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           sidebarOpen ? "w-[260px]" : "w-0"
         )}
       >
-        <Sidebar onClose={() => setSidebarOpen(false)} />
+        <Sidebar onClose={() => setSidebarOpen(false)} notebooks={recentNotebooks} />
       </div>
 
       <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">

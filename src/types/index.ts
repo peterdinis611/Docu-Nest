@@ -62,6 +62,29 @@ export interface WeeklyActivity {
   studio: number
 }
 
+export interface AnalyticsBreakdown {
+  chatSessions: number
+  avgChatsPerDay: number
+  documentsAdded: number
+  notebooksWithUploads: number
+  studioGenerated: number
+  audioOverviews: number
+}
+
+export interface AnalyticsEfficiency {
+  hoursSaved: number
+  hoursSavedChange: number
+  answerCount: number
+}
+
+export interface AnalyticsData {
+  metrics: UsageMetric[]
+  weeklyActivity: WeeklyActivity[]
+  topNotebooks: { id: string; title: string; messageCount: number }[]
+  breakdown: AnalyticsBreakdown
+  efficiency: AnalyticsEfficiency
+}
+
 export interface SourceDocument {
   id: string
   title: string

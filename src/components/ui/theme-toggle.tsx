@@ -12,6 +12,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useTheme, type Theme } from "@/hooks/useTheme"
+import { useMounted } from "@/hooks/useMounted"
 import { cn } from "@/lib/utils"
 
 const options: { value: Theme; label: string; icon: typeof Sun }[] = [
@@ -30,8 +31,9 @@ export function ThemeToggle({
   className,
 }: ThemeToggleProps) {
   const { theme, resolvedTheme, setTheme } = useTheme()
-  const ActiveIcon =
-    resolvedTheme === "dark" ? Moon : Sun
+  const mounted = useMounted()
+
+  const ActiveIcon = !mounted || resolvedTheme === "light" ? Sun : Moon
 
   if (variant === "segmented") {
     return (

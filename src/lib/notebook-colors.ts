@@ -10,3 +10,13 @@ export const NOTEBOOK_COLORS = [
 export function pickNotebookColor() {
   return NOTEBOOK_COLORS[Math.floor(Math.random() * NOTEBOOK_COLORS.length)]
 }
+
+export function getNotebookDotClass(color: string) {
+  if (color.includes("blue") || color.includes("indigo")) return "bg-blue-400"
+  if (color.includes("emerald") || color.includes("teal")) return "bg-emerald-400"
+  if (color.includes("amber") || color.includes("orange")) return "bg-amber-400"
+  if (color.includes("violet") || color.includes("purple")) return "bg-violet-400"
+  if (color.includes("rose") || color.includes("pink")) return "bg-rose-400"
+  if (color.includes("cyan") || color.includes("sky")) return "bg-cyan-400"
+  return "bg-sidebar-primary"
+}

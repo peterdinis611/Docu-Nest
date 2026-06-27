@@ -43,8 +43,8 @@ export function createNotebookForUser(
   }
 }
 
-export function listNotebooksForUser(userId: string) {
-  return db
+export function listNotebooksForUser(userId: string, limit?: number) {
+  const query = db
     .select({
       id: notebooks.id,
       title: notebooks.title,
@@ -61,7 +61,8 @@ export function listNotebooksForUser(userId: string) {
     .where(eq(notebooks.userId, userId))
     .groupBy(notebooks.id)
     .orderBy(desc(notebooks.updatedAt))
-    .all()
+
+  return (limit ? query.limit(limit) : query).all()
 }
 
 export function listSourcesForUser(userId: string) {

@@ -26,7 +26,8 @@ import {
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { useSearch } from "@/hooks/useSearch"
-import { mockNotebooks } from "@/data/mock"
+import type { SidebarNotebook } from "@/components/layout/AppLayout"
+import { getNotebookDotClass } from "@/lib/notebook-colors"
 import { cn } from "@/lib/utils"
 
 const mainNav = [
@@ -35,14 +36,10 @@ const mainNav = [
   { href: "/app/analytics",icon: BarChart3,  label: "Analytics" },
 ]
 
-const notebookDots: Record<string, string> = {
-  "nb-1": "bg-blue-400",
-  "nb-2": "bg-emerald-400",
-  "nb-3": "bg-amber-400",
-  "nb-4": "bg-violet-400",
+interface SidebarProps {
+  onClose: () => void
+  notebooks: SidebarNotebook[]
 }
-
-interface SidebarProps { onClose: () => void }
 
 function NavItem({ href, icon: Icon, label, end }: {
   href: string; icon: typeof Home; label: string; end?: boolean
@@ -66,7 +63,15 @@ function NavItem({ href, icon: Icon, label, end }: {
   )
 }
 
-function NotebookItem({ id, title }: { id: string; title: string }) {
+function NotebookItem({
+  id,
+  title,
+  color,
+}: {
+  id: string
+  title: string
+  color: string
+}) {
   const pathname = usePathname()
   const isActive = pathname === `/notebook/${id}`
 
@@ -80,7 +85,12 @@ function NotebookItem({ id, title }: { id: string; title: string }) {
           : "text-sidebar-muted hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
       )}
     >
-      <span className={cn("size-1.5 shrink-0 rounded-full", notebookDots[id] ?? "bg-sidebar-primary")} />
+      <span
+        className={cn(
+          "size-1.5 shrink-0 rounded-full",
+          getNotebookDotClass(color)
+        )}
+      />
       <span className="truncate">{title}</span>
     </Link>
   )
@@ -164,7 +174,7 @@ function UserMenu() {
   )
 }
 
-export function Sidebar({ onClose }: SidebarProps) {
+export function Sidebar({ onClose, notebooks }: SidebarProps) {
   const { openSearch } = useSearch()
 
   return (
@@ -224,9 +234,20 @@ export function Sidebar({ onClose }: SidebarProps) {
             <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-widest text-sidebar-muted/70">
               Notebooks
             </p>
-            {mockNotebooks.slice(0, 4).map((nb) => (
-              <NotebookItem key={nb.id} id={nb.id} title={nb.title} />
-            ))}
+            {notebooks.length === 0 ? (
+              <p className="px-3 py-2 text-[12px] text-sidebar-muted/70">
+                No notebooks yet
+              </p>
+            ) : (
+              notebooks.map((nb) => (
+                <NotebookItem
+                  key={nb.id}
+                  id={nb.id}
+                  title={nb.title}
+                  color={nb.color}
+                />
+              ))
+            )}
             <Link
               href="/app/library"
               className="flex items-center gap-2 px-3 py-1.5 text-[12px] text-sidebar-muted/70 transition-colors hover:text-sidebar-primary"

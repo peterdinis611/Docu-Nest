@@ -1,14 +1,16 @@
 "use client"
 
 import { Toaster as Sonner, type ToasterProps } from "sonner"
+import { useMounted } from "@/hooks/useMounted"
 import { useTheme } from "@/hooks/useTheme"
 
 export function Toaster({ ...props }: ToasterProps) {
   const { resolvedTheme } = useTheme()
+  const mounted = useMounted()
 
   return (
     <Sonner
-      theme={resolvedTheme as ToasterProps["theme"]}
+      theme={(mounted ? resolvedTheme : "light") as ToasterProps["theme"]}
       className="toaster group"
       toastOptions={{
         classNames: {
