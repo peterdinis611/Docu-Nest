@@ -1,4 +1,8 @@
-import { NavLink, useLocation } from "react-router-dom"
+"use client"
+
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { SignOutButton, useUser } from "@clerk/nextjs"
 import {
   BarChart3,
   FolderOpen,
@@ -11,7 +15,7 @@ import {
   Sparkles,
   User,
 } from "lucide-react"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -28,9 +32,9 @@ import { mockNotebooks } from "@/data/mock"
 import { cn } from "@/lib/utils"
 
 const mainNav = [
-  { to: "/app",          icon: Home,       label: "Home",      end: true },
-  { to: "/app/library",  icon: FolderOpen, label: "Library" },
-  { to: "/app/analytics",icon: BarChart3,  label: "Analytics" },
+  { href: "/app",          icon: Home,       label: "Home",      end: true },
+  { href: "/app/library",  icon: FolderOpen, label: "Library" },
+  { href: "/app/analytics",icon: BarChart3,  label: "Analytics" },
 ]
 
 const notebookDots: Record<string, string> = {
@@ -42,35 +46,35 @@ const notebookDots: Record<string, string> = {
 
 interface SidebarProps { onClose: () => void }
 
-function NavItem({ to, icon: Icon, label, end }: {
-  to: string; icon: typeof Home; label: string; end?: boolean
+function NavItem({ href, icon: Icon, label, end }: {
+  href: string; icon: typeof Home; label: string; end?: boolean
 }) {
+  const pathname = usePathname()
+  const isActive = end ? pathname === href : pathname.startsWith(href)
+
   return (
-    <NavLink
-      to={to}
-      end={end}
-      className={({ isActive }) =>
-        cn(
-          "group relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all",
-          isActive
-            ? "bg-sidebar-accent text-sidebar-foreground before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-sidebar-primary"
-            : "text-sidebar-muted hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
-        )
-      }
+    <Link
+      href={href}
+      className={cn(
+        "group relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all",
+        isActive
+          ? "bg-sidebar-accent text-sidebar-foreground before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-sidebar-primary"
+          : "text-sidebar-muted hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
+      )}
     >
       <Icon className="size-4 shrink-0" />
       <span className="truncate">{label}</span>
-    </NavLink>
+    </Link>
   )
 }
 
 function NotebookItem({ id, title }: { id: string; title: string }) {
-  const location = useLocation()
-  const isActive = location.pathname === `/notebook/${id}`
+  const pathname = usePathname()
+  const isActive = pathname === `/notebook/${id}`
 
   return (
-    <NavLink
-      to={`/notebook/${id}`}
+    <Link
+      href={`/notebook/${id}`}
       className={cn(
         "group flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all",
         isActive
@@ -80,11 +84,38 @@ function NotebookItem({ id, title }: { id: string; title: string }) {
     >
       <span className={cn("size-1.5 shrink-0 rounded-full", notebookDots[id] ?? "bg-sidebar-primary")} />
       <span className="truncate">{title}</span>
-    </NavLink>
+    </Link>
   )
 }
 
 function UserMenu() {
+  const { user, isLoaded } = useUser()
+
+  if (!isLoaded) {
+    return (
+      <div className="flex items-center gap-2.5 rounded-xl px-2 py-2">
+        <div className="size-7 shrink-0 animate-pulse rounded-full bg-sidebar-accent" />
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="h-3 w-24 animate-pulse rounded bg-sidebar-accent" />
+          <div className="h-2.5 w-32 animate-pulse rounded bg-sidebar-accent" />
+        </div>
+      </div>
+    )
+  }
+
+  const name =
+    user?.fullName ??
+    user?.firstName ??
+    user?.username ??
+    "Account"
+  const email = user?.primaryEmailAddress?.emailAddress ?? ""
+  const initials = name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase()
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -93,27 +124,43 @@ function UserMenu() {
           className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left transition-colors hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary"
         >
           <Avatar className="size-7">
+            <AvatarImage src={user?.imageUrl} alt={name} />
             <AvatarFallback className="bg-sidebar-primary/25 text-[11px] font-semibold text-sidebar-primary">
-              PD
+              {initials}
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] font-medium text-sidebar-foreground">Peter Dinis</p>
-            <p className="truncate text-[11px] text-sidebar-muted">Pro plan</p>
+            <p className="truncate text-[13px] font-medium text-sidebar-foreground">
+              {name}
+            </p>
+            {email ? (
+              <p className="truncate text-[11px] text-sidebar-muted">{email}</p>
+            ) : (
+              <p className="truncate text-[11px] text-sidebar-muted">Manage profile</p>
+            )}
           </div>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent side="top" align="start" className="w-52">
-        <DropdownMenuItem>
-          <User className="size-4" /> Profile
+        <DropdownMenuItem asChild>
+          <Link href="/app/settings">
+            <User className="size-4" />
+            Profile
+          </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem>
-          <Settings className="size-4" /> Settings
+        <DropdownMenuItem asChild>
+          <Link href="/app/settings">
+            <Settings className="size-4" />
+            Settings
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="text-destructive focus:text-destructive">
-          <LogOut className="size-4" /> Log out
-        </DropdownMenuItem>
+        <SignOutButton redirectUrl="/">
+          <DropdownMenuItem className="text-destructive focus:text-destructive">
+            <LogOut className="size-4" />
+            Log out
+          </DropdownMenuItem>
+        </SignOutButton>
       </DropdownMenuContent>
     </DropdownMenu>
   )
@@ -128,14 +175,14 @@ export function Sidebar({ onClose }: SidebarProps) {
 
         {/* ── Logo / header ── */}
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-sidebar-border px-4">
-          <NavLink to="/app" className="flex min-w-0 items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary">
+          <Link href="/app" className="flex min-w-0 items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary">
             <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary shadow-lg shadow-sidebar-primary/30">
               <Sparkles className="size-3.5 text-sidebar-primary-foreground" />
             </div>
             <span className="truncate text-[15px] font-bold tracking-tight text-sidebar-foreground">
               DocuNest
             </span>
-          </NavLink>
+          </Link>
           <Button
             variant="ghost"
             size="icon"
@@ -180,7 +227,7 @@ export function Sidebar({ onClose }: SidebarProps) {
               Menu
             </p>
             {mainNav.map((item) => (
-              <NavItem key={item.to} {...item} />
+              <NavItem key={item.href} {...item} />
             ))}
           </div>
 
@@ -191,18 +238,18 @@ export function Sidebar({ onClose }: SidebarProps) {
             {mockNotebooks.slice(0, 4).map((nb) => (
               <NotebookItem key={nb.id} id={nb.id} title={nb.title} />
             ))}
-            <NavLink
-              to="/app/library"
+            <Link
+              href="/app/library"
               className="flex items-center gap-2 px-3 py-1.5 text-[12px] text-sidebar-muted/70 transition-colors hover:text-sidebar-primary"
             >
               View all →
-            </NavLink>
+            </Link>
           </div>
         </nav>
 
         {/* ── Footer ── */}
         <div className="shrink-0 space-y-1 border-t border-sidebar-border p-3">
-          <NavItem to="/app/settings" icon={Settings} label="Settings" />
+          <NavItem href="/app/settings" icon={Settings} label="Settings" />
 
           <div className="flex items-center justify-between px-3 py-1">
             <span className="text-[12px] text-sidebar-muted">Theme</span>

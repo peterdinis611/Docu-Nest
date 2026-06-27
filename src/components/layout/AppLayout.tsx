@@ -1,5 +1,7 @@
+"use client"
+
 import { useEffect, useState } from "react"
-import { Link, Outlet } from "react-router-dom"
+import Link from "next/link"
 import { PanelLeft, Sparkles } from "lucide-react"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { Button } from "@/components/ui/button"
@@ -8,13 +10,14 @@ import { cn } from "@/lib/utils"
 const STORAGE_KEY = "docunest-sidebar-open"
 
 function getInitialOpen() {
+  if (typeof window === "undefined") return true
   const stored = localStorage.getItem(STORAGE_KEY)
   if (stored === "true") return true
   if (stored === "false") return false
   return true
 }
 
-export function AppLayout() {
+export function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(getInitialOpen)
 
   useEffect(() => {
@@ -47,7 +50,7 @@ export function AppLayout() {
             >
               <PanelLeft className="size-4" />
             </Button>
-            <Link to="/app" className="flex items-center gap-2 text-sm font-semibold">
+            <Link href="/app" className="flex items-center gap-2 text-sm font-semibold">
               <div className="flex size-7 items-center justify-center rounded-md bg-primary">
                 <Sparkles className="size-3.5 text-primary-foreground" />
               </div>
@@ -57,7 +60,7 @@ export function AppLayout() {
         )}
 
         <div className="relative min-h-0 flex-1 overflow-auto">
-          <Outlet />
+          {children}
         </div>
       </main>
     </div>

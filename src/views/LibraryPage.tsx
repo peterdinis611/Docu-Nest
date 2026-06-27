@@ -1,5 +1,7 @@
+"use client"
+
 import { useMemo, useState } from "react"
-import { Link } from "react-router-dom"
+import Link from "next/link"
 import {
   ArrowDownAZ,
   ArrowUpAZ,
@@ -331,7 +333,7 @@ export function LibraryPage() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <Link
-                      to={`/notebook/${doc.notebookId}`}
+                      href={`/notebook/${doc.notebookId}`}
                       className="text-xs text-primary hover:underline"
                     >
                       {doc.notebookTitle}

@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
+"use client"
+
+import { useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import {
   BookOpen,
   FileText,
@@ -38,7 +40,7 @@ const kindLabels: Record<SearchItemKind, string> = {
 
 export function GlobalSearchDialog() {
   const { open, closeSearch } = useSearch()
-  const navigate = useNavigate()
+  const router = useRouter()
   const [query, setQuery] = useState("")
   const [activeIndex, setActiveIndex] = useState(0)
 
@@ -62,21 +64,18 @@ export function GlobalSearchDialog() {
     return groups
   }, [results])
 
-  useEffect(() => {
-    if (!open) {
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      closeSearch()
       setQuery("")
       setActiveIndex(0)
     }
-  }, [open])
-
-  useEffect(() => {
-    setActiveIndex(0)
-  }, [query])
+  }
 
   const flatResults = results
 
   const selectItem = (item: SearchItem) => {
-    navigate(item.href)
+    router.push(item.href)
     closeSearch()
   }
 
@@ -96,7 +95,7 @@ export function GlobalSearchDialog() {
   let runningIndex = -1
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && closeSearch()}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg">
         <DialogHeader className="sr-only">
           <DialogTitle>Search</DialogTitle>
@@ -110,7 +109,10 @@ export function GlobalSearchDialog() {
           <Input
             autoFocus
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setActiveIndex(0)
+            }}
             onKeyDown={handleKeyDown}
             placeholder="Search notebooks, sources, pages…"
             className="border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"

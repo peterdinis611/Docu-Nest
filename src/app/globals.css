@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@clerk/themes/shadcn.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -52,7 +53,11 @@
    Inspired by: Vercel / Linear / Craft
 ───────────────────────────────────────────────────────────────────────────── */
 :root {
+  color-scheme: light;
   --radius: 0.5rem;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
 
   /* Surfaces */
   --background:        oklch(0.990 0.002 285);   /* off-white with micro violet */
@@ -111,6 +116,7 @@
    DARK MODE  — deep navy, softer primary so it's readable at high luminance
 ───────────────────────────────────────────────────────────────────────────── */
 .dark {
+  color-scheme: dark;
   /* Surfaces */
   --background:        oklch(0.093 0.016 268);   /* near-black navy             */
   --foreground:        oklch(0.930 0.008 275);   /* soft white                  */

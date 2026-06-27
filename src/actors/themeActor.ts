@@ -6,4 +6,7 @@ import { themeMachine } from "@/machines/themeMachine"
  * Components subscribe via useSelector, no Provider needed.
  */
 export const themeActor = createActor(themeMachine)
-themeActor.start()
+
+if (typeof window !== "undefined") {
+  themeActor.start()
+}

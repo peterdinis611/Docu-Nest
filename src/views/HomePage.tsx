@@ -1,4 +1,6 @@
-import { Link } from "react-router-dom"
+"use client"
+
+import Link from "next/link"
 import {
   ArrowRight,
   BookOpen,
@@ -112,7 +114,7 @@ export function HomePage() {
               size="lg"
               className="gap-2 bg-white/15 text-primary-foreground hover:bg-white/25 dark:bg-white/10 dark:hover:bg-white/20"
             >
-              <Link to="/notebook/nb-1">
+              <Link href="/notebook/nb-1">
                 <BookOpen className="size-4" />
                 Open notebook
               </Link>
@@ -166,7 +168,7 @@ export function HomePage() {
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold">Your notebooks</h2>
               <Link
-                to="/app/library"
+                href="/app/library"
                 className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
               >
                 View all <ArrowRight className="size-3" />
@@ -175,7 +177,7 @@ export function HomePage() {
 
             <div className="grid gap-3 sm:grid-cols-2">
               {mockNotebooks.map((notebook) => (
-                <Link key={notebook.id} to={`/notebook/${notebook.id}`}>
+                <Link key={notebook.id} href={`/notebook/${notebook.id}`}>
                   <Card className="group h-full overflow-hidden border border-border/50 bg-card shadow-sm transition-all duration-200 hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5">
                     {/* colour strip */}
                     <div
@@ -266,7 +268,7 @@ export function HomePage() {
               </CardHeader>
               <CardContent>
                 <Button asChild className="w-full gap-2" size="sm">
-                  <Link to="/notebook/nb-1">
+                  <Link href="/notebook/nb-1">
                     <BookOpen className="size-4" />
                     Continue researching
                   </Link>

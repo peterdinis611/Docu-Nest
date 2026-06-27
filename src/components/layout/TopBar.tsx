@@ -1,4 +1,6 @@
-import { Link } from "react-router-dom"
+"use client"
+
+import Link from "next/link"
 import {
   ChevronDown,
   Home,
@@ -57,7 +59,7 @@ export function TopBar({
           className="size-8 text-muted-foreground hover:text-foreground"
           asChild
         >
-          <Link to="/app">
+          <Link href="/app">
             <Home className="size-4" />
           </Link>
         </Button>
@@ -109,7 +111,7 @@ export function TopBar({
             ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link to="/app" className="text-primary">
+              <Link href="/app" className="text-primary">
                 View all notebooks
               </Link>
             </DropdownMenuItem>

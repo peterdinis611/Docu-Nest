@@ -1,10 +1,13 @@
+"use client"
+
 import { useEffect } from "react"
-import { useParams } from "react-router-dom"
+import { useParams } from "next/navigation"
 import { AppShell } from "@/components/layout/AppShell"
 import { useNotebook } from "@/hooks/useNotebook"
 
 export function NotebookPage() {
-  const { notebookId } = useParams()
+  const params = useParams()
+  const notebookId = params.notebookId as string | undefined
   const notebook = useNotebook()
 
   useEffect(() => {

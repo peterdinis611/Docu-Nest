@@ -6,12 +6,14 @@ export type ResolvedTheme = "light" | "dark"
 const STORAGE_KEY = "docunest-theme"
 
 function getSystemTheme(): ResolvedTheme {
+  if (typeof window === "undefined") return "light"
   return window.matchMedia("(prefers-color-scheme: dark)").matches
     ? "dark"
     : "light"
 }
 
 function getStoredTheme(): Theme {
+  if (typeof window === "undefined") return "system"
   const stored = localStorage.getItem(STORAGE_KEY)
   if (stored === "light" || stored === "dark" || stored === "system")
     return stored
@@ -23,6 +25,7 @@ function resolve(theme: Theme): ResolvedTheme {
 }
 
 function applyToDom(resolved: ResolvedTheme) {
+  if (typeof document === "undefined") return
   document.documentElement.classList.toggle("dark", resolved === "dark")
 }
 
@@ -43,6 +46,7 @@ export type ThemeEvent =
  * whenever it fires (only used in state "watchingSystem").
  */
 const systemWatcher = fromCallback<{ type: "SYSTEM_CHANGED" }>(({ sendBack }) => {
+  if (typeof window === "undefined") return () => {}
   const media = window.matchMedia("(prefers-color-scheme: dark)")
   const handler = () => sendBack({ type: "SYSTEM_CHANGED" })
   media.addEventListener("change", handler)
@@ -57,6 +61,7 @@ export const themeMachine = setup({
   actors: { systemWatcher },
   actions: {
     persist: ({ context }) => {
+      if (typeof window === "undefined") return
       localStorage.setItem(STORAGE_KEY, context.theme)
     },
     applyDom: ({ context }) => {
@@ -78,17 +83,25 @@ export const themeMachine = setup({
           {
             guard: ({ event }) => event.theme === "system",
             target: "watchingSystem",
-            actions: assign(({ event }) => ({
-              theme: event.theme,
-              resolvedTheme: resolve(event.theme),
-            })),
+            actions: [
+              assign(({ event }) => ({
+                theme: event.theme,
+                resolvedTheme: resolve(event.theme),
+              })),
+              "persist",
+              "applyDom",
+            ],
           },
           {
             target: "fixed",
-            actions: assign(({ event }) => ({
-              theme: event.theme,
-              resolvedTheme: resolve(event.theme),
-            })),
+            actions: [
+              assign(({ event }) => ({
+                theme: event.theme,
+                resolvedTheme: resolve(event.theme),
+              })),
+              "persist",
+              "applyDom",
+            ],
           },
         ],
       },
@@ -102,24 +115,35 @@ export const themeMachine = setup({
           {
             guard: ({ event }) => event.theme !== "system",
             target: "fixed",
-            actions: assign(({ event }) => ({
-              theme: event.theme,
-              resolvedTheme: resolve(event.theme),
-            })),
+            actions: [
+              assign(({ event }) => ({
+                theme: event.theme,
+                resolvedTheme: resolve(event.theme),
+              })),
+              "persist",
+              "applyDom",
+            ],
           },
           {
             target: "watchingSystem",
-            actions: assign(({ event }) => ({
-              theme: event.theme,
-              resolvedTheme: resolve(event.theme),
-            })),
+            actions: [
+              assign(({ event }) => ({
+                theme: event.theme,
+                resolvedTheme: resolve(event.theme),
+              })),
+              "persist",
+              "applyDom",
+            ],
           },
         ],
         SYSTEM_CHANGED: {
-          actions: assign(({ context }) => ({
-            resolvedTheme: getSystemTheme(),
-            theme: context.theme,
-          })),
+          actions: [
+            assign(({ context }) => ({
+              resolvedTheme: getSystemTheme(),
+              theme: context.theme,
+            })),
+            "applyDom",
+          ],
         },
       },
       entry: ["persist", "applyDom"],
