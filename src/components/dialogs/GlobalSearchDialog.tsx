@@ -1,17 +1,21 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { AnimatePresence, motion } from "framer-motion"
+import { useAction } from "next-safe-action/hooks"
 import {
   BarChart3,
   BookOpen,
   FileText,
   FolderOpen,
   Home,
+  Loader2,
   Search,
   Settings,
   type LucideIcon,
 } from "lucide-react"
+import { globalSearchAction } from "@/actions/search"
 import {
   Dialog,
   DialogContent,
@@ -19,21 +23,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { SearchEmptyState } from "@/components/search/SearchEmptyState"
+import { SearchResultList } from "@/components/search/SearchResultList"
 import { useSearch } from "@/hooks/useSearch"
-import { createFuseIndex, searchFuse } from "@/hooks/useFuseSearch"
-import {
-  buildGlobalSearchIndex,
-  globalSearchFuseOptions,
-  type SearchItem,
-  type SearchItemKind,
-} from "@/lib/search-index"
-import { cn } from "@/lib/utils"
-
-const kindLabels: Record<SearchItemKind, string> = {
-  page: "Pages",
-  notebook: "Notebooks",
-  document: "Documents",
-}
+import type { SearchItem, SearchItemKind } from "@/lib/search-index"
 
 const kindOrder: SearchItemKind[] = ["page", "notebook", "document"]
 
@@ -60,25 +53,29 @@ export function GlobalSearchDialog() {
   const [query, setQuery] = useState("")
   const [activeIndex, setActiveIndex] = useState(0)
 
-  const index = useMemo(() => buildGlobalSearchIndex(), [])
-  const fuse = useMemo(
-    () => createFuseIndex(index, globalSearchFuseOptions),
-    [index]
+  const { execute, result, isExecuting, hasErrored } = useAction(
+    globalSearchAction
   )
 
-  const results = useMemo(
-    () => searchFuse(fuse, query, index),
-    [fuse, query, index]
-  )
+  useEffect(() => {
+    if (!open) return
 
-  const grouped = useMemo(() => {
-    const groups: Partial<Record<SearchItemKind, SearchItem[]>> = {}
-    for (const item of results) {
-      groups[item.kind] ??= []
-      groups[item.kind]!.push(item)
-    }
-    return groups
-  }, [results])
+    const delay = query.trim() ? 200 : 0
+    const timer = window.setTimeout(() => {
+      execute({ query })
+    }, delay)
+
+    return () => window.clearTimeout(timer)
+  }, [open, query, execute])
+
+  const results = result.data?.items ?? []
+  const showLoading = isExecuting && results.length === 0
+  const showEmpty = !isExecuting && (hasErrored || results.length === 0)
+  const emptyVariant = hasErrored
+    ? "error"
+    : query.trim()
+      ? "empty"
+      : "idle"
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
@@ -108,8 +105,6 @@ export function GlobalSearchDialog() {
     }
   }
 
-  let runningIndex = -1
-
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
@@ -124,7 +119,29 @@ export function GlobalSearchDialog() {
         </DialogHeader>
 
         <div className="flex items-center gap-3 border-b border-border/80 px-4 py-3">
-          <Search className="size-4 shrink-0 text-muted-foreground" />
+          <AnimatePresence mode="wait" initial={false}>
+            {isExecuting ? (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.15 }}
+              >
+                <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="search"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.15 }}
+              >
+                <Search className="size-4 shrink-0 text-muted-foreground" />
+              </motion.div>
+            )}
+          </AnimatePresence>
           <input
             autoFocus
             value={query}
@@ -141,69 +158,46 @@ export function GlobalSearchDialog() {
           </kbd>
         </div>
 
-        <div className="max-h-80 overflow-y-auto p-2">
-          {results.length === 0 ? (
-            <p className="px-3 py-8 text-center text-sm text-muted-foreground">
-              {query.trim() ? "No results found" : "Start typing to search…"}
-            </p>
+        <AnimatePresence mode="wait">
+          {showLoading ? (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center justify-center py-12"
+            >
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            </motion.div>
+          ) : showEmpty ? (
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <SearchEmptyState variant={emptyVariant} query={query} />
+            </motion.div>
           ) : (
-            kindOrder.map((kind) => {
-              const items = grouped[kind]
-              if (!items?.length) return null
-
-              return (
-                <div key={kind} className="mb-1 last:mb-0">
-                  <p className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    {kindLabels[kind]}
-                  </p>
-                  {items.map((item) => {
-                    runningIndex += 1
-                    const itemIndex = runningIndex
-                    const isActive = itemIndex === activeIndex
-                    const Icon = getItemIcon(item)
-
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => selectItem(item)}
-                        onMouseEnter={() => setActiveIndex(itemIndex)}
-                        className={cn(
-                          "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors",
-                          isActive
-                            ? "bg-accent text-accent-foreground"
-                            : "hover:bg-accent/50"
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "flex size-8 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-muted/50",
-                            isActive && "border-primary/20 bg-primary/10"
-                          )}
-                        >
-                          <Icon
-                            className={cn(
-                              "size-4 text-muted-foreground",
-                              isActive && "text-primary"
-                            )}
-                          />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">
-                            {item.title}
-                          </p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {item.subtitle}
-                          </p>
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              )
-            })
+            <motion.div
+              key="results"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <SearchResultList
+                results={results}
+                kindOrder={kindOrder}
+                activeIndex={activeIndex}
+                getItemIcon={getItemIcon}
+                onSelect={selectItem}
+                onActiveIndexChange={setActiveIndex}
+              />
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
 
         <div className="flex items-center justify-between border-t border-border/80 bg-muted/30 px-4 py-2 text-[10px] text-muted-foreground">
           <span>↑↓ navigate · ↵ open · esc close</span>

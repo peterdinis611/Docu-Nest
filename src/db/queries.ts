@@ -29,6 +29,22 @@ export function listNotebooksForUser(userId: string) {
     .all()
 }
 
+export function listSourcesForUser(userId: string) {
+  return db
+    .select({
+      id: sources.id,
+      title: sources.title,
+      type: sources.type,
+      notebookId: sources.notebookId,
+      notebookTitle: notebooks.title,
+    })
+    .from(sources)
+    .innerJoin(notebooks, eq(sources.notebookId, notebooks.id))
+    .where(eq(notebooks.userId, userId))
+    .orderBy(desc(sources.uploadedAt))
+    .all()
+}
+
 export function getNotebookById(notebookId: string, userId: string) {
   return db.query.notebooks.findFirst({
     where: (table, { and, eq: equals }) =>
