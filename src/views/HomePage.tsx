@@ -125,24 +125,14 @@ export function HomePage({ notebooks }: { notebooks: Notebook[] }) {
           </div>
         ) : (
           <div className="relative overflow-hidden rounded-2xl border border-dashed border-border/80 bg-muted/20 p-7 lg:p-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-1">
-                <h2 className="text-xl font-semibold tracking-tight">
-                  Create your first notebook
-                </h2>
-                <p className="max-w-md text-sm text-muted-foreground">
-                  Upload documents, chat with AI, and generate study materials in
-                  one workspace.
-                </p>
-              </div>
-              <CreateNotebookDialog
-                trigger={
-                  <Button className="gap-2">
-                    <Plus className="size-4" />
-                    New notebook
-                  </Button>
-                }
-              />
+            <div className="space-y-1">
+              <h2 className="text-xl font-semibold tracking-tight">
+                Welcome to DocuNest
+              </h2>
+              <p className="max-w-md text-sm text-muted-foreground">
+                Upload documents, chat with AI, and generate study materials in
+                one workspace. Use <span className="font-medium text-foreground">New notebook</span> above to get started.
+              </p>
             </div>
           </div>
         )}
@@ -206,16 +196,8 @@ export function HomePage({ notebooks }: { notebooks: Notebook[] }) {
                   <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
                     <BookOpen className="size-8 text-muted-foreground/50" />
                     <p className="text-sm text-muted-foreground">
-                      No notebooks yet. Create one to get started.
+                      No notebooks yet. Use New notebook above to create your first one.
                     </p>
-                    <CreateNotebookDialog
-                      trigger={
-                        <Button size="sm" className="gap-2">
-                          <Plus className="size-4" />
-                          New notebook
-                        </Button>
-                      }
-                    />
                   </CardContent>
                 </Card>
               ) : (
@@ -297,39 +279,29 @@ export function HomePage({ notebooks }: { notebooks: Notebook[] }) {
               </ul>
             </Card>
 
-            {/* Quick-start card */}
-            <Card className="border border-border/50 bg-gradient-to-br from-primary/6 to-transparent shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-[15px]">
-                  <div className="flex size-7 items-center justify-center rounded-lg bg-primary/12">
-                    <Sparkles className="size-3.5 text-primary" />
-                  </div>
-                  Quick start
-                </CardTitle>
-                <CardDescription className="text-[13px]">
-                  Jump back into your most active notebook
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {featured ? (
+            {featured && (
+              <Card className="border border-border/50 bg-gradient-to-br from-primary/6 to-transparent shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-[15px]">
+                    <div className="flex size-7 items-center justify-center rounded-lg bg-primary/12">
+                      <Sparkles className="size-3.5 text-primary" />
+                    </div>
+                    Quick start
+                  </CardTitle>
+                  <CardDescription className="text-[13px]">
+                    Jump back into your most active notebook
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
                   <Button asChild className="w-full gap-2" size="sm">
                     <Link href={`/notebook/${featured.id}`}>
                       <BookOpen className="size-4" />
                       Continue researching
                     </Link>
                   </Button>
-                ) : (
-                  <CreateNotebookDialog
-                    trigger={
-                      <Button className="w-full gap-2" size="sm">
-                        <Plus className="size-4" />
-                        Create notebook
-                      </Button>
-                    }
-                  />
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>

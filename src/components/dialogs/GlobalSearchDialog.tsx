@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { AnimatePresence, motion } from "framer-motion"
 import { useAction } from "next-safe-action/hooks"
+import { toast } from "sonner"
 import {
   BarChart3,
   BookOpen,
@@ -54,7 +55,16 @@ export function GlobalSearchDialog() {
   const [activeIndex, setActiveIndex] = useState(0)
 
   const { execute, result, isExecuting, hasErrored, reset } = useAction(
-    globalSearchAction
+    globalSearchAction,
+    {
+      onError: ({ error }) => {
+        toast.error(
+          typeof error.serverError === "string"
+            ? error.serverError
+            : "Search failed. Please try again."
+        )
+      },
+    }
   )
 
   useEffect(() => {

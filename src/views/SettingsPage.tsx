@@ -1,11 +1,14 @@
 "use client"
 
 import { useState } from "react"
+import { useClerk, useUser } from "@clerk/nextjs"
+import { toast } from "sonner"
 import {
   Bell,
   Bot,
   Cloud,
   Key,
+  Loader2,
   Palette,
   Shield,
   User,
@@ -13,7 +16,7 @@ import {
 import { PageHeader } from "@/components/layout/PageHeader"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { useTheme } from "@/hooks/useTheme"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -65,6 +68,200 @@ function ToggleRow({
       </button>
     </div>
   )
+}
+
+function ProfileForm({
+  user,
+}: {
+  user: NonNullable<ReturnType<typeof useUser>["user"]>
+}) {
+  const { openUserProfile } = useClerk()
+  const [firstName, setFirstName] = useState(user.firstName ?? "")
+  const [lastName, setLastName] = useState(user.lastName ?? "")
+  const [bio, setBio] = useState(
+    (user.unsafeMetadata?.bio as string | undefined) ?? ""
+  )
+  const [isSaving, setIsSaving] = useState(false)
+
+  const displayName =
+    user.fullName ?? user.firstName ?? user.username ?? "Account"
+  const email = user.primaryEmailAddress?.emailAddress ?? ""
+  const initials = displayName
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase()
+
+  async function handleSave() {
+    setIsSaving(true)
+
+    try {
+      await user.update({
+        firstName: firstName.trim() || undefined,
+        lastName: lastName.trim() || undefined,
+        unsafeMetadata: {
+          ...user.unsafeMetadata,
+          bio: bio.trim(),
+        },
+      })
+      toast.success("Profile saved", {
+        description: "Your changes have been updated.",
+      })
+    } catch {
+      toast.error("Failed to save profile", {
+        description: "Please try again in a moment.",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Profile</CardTitle>
+        <CardDescription>Your public profile information</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Avatar className="size-16">
+            <AvatarImage src={user.imageUrl} alt={displayName} />
+            <AvatarFallback className="bg-primary/10 text-lg text-primary">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="space-y-1">
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={() => openUserProfile()}
+            >
+              Manage account
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Avatar, email, and security are managed in Clerk.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <label htmlFor="first-name" className="text-sm font-medium">
+              First name
+            </label>
+            <Input
+              id="first-name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder="First name"
+            />
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="last-name" className="text-sm font-medium">
+              Last name
+            </label>
+            <Input
+              id="last-name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              placeholder="Last name"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="email" className="text-sm font-medium">
+            Email
+          </label>
+          <Input
+            id="email"
+            value={email}
+            type="email"
+            readOnly
+            disabled
+            className="bg-muted/50"
+          />
+          <p className="text-xs text-muted-foreground">
+            Change your email in{" "}
+            <button
+              type="button"
+              onClick={() => openUserProfile()}
+              className="font-medium text-primary hover:underline"
+            >
+              account settings
+            </button>
+            .
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="bio" className="text-sm font-medium">
+            Bio
+          </label>
+          <Textarea
+            id="bio"
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            placeholder="Tell others a little about yourself"
+            rows={3}
+          />
+        </div>
+
+        <Button onClick={handleSave} disabled={isSaving}>
+          {isSaving ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Saving…
+            </>
+          ) : (
+            "Save changes"
+          )}
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+function ProfileSettingsCard() {
+  const { user, isLoaded } = useUser()
+
+  if (!isLoaded) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Profile</CardTitle>
+          <CardDescription>Your public profile information</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="size-16 animate-pulse rounded-full bg-muted" />
+            <div className="h-8 w-28 animate-pulse rounded-md bg-muted" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="h-10 animate-pulse rounded-md bg-muted" />
+            <div className="h-10 animate-pulse rounded-md bg-muted" />
+          </div>
+          <div className="h-10 animate-pulse rounded-md bg-muted" />
+          <div className="h-24 animate-pulse rounded-md bg-muted" />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (!user) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Profile</CardTitle>
+          <CardDescription>Sign in to manage your profile</CardDescription>
+        </CardHeader>
+      </Card>
+    )
+  }
+
+  return <ProfileForm key={user.id} user={user} />
 }
 
 export function SettingsPage() {
@@ -120,55 +317,7 @@ export function SettingsPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Profile</CardTitle>
-              <CardDescription>Your public profile information</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center gap-4">
-                <Avatar className="size-16">
-                  <AvatarFallback className="bg-primary/10 text-lg text-primary">
-                    PD
-                  </AvatarFallback>
-                </Avatar>
-                <div className="space-y-1">
-                  <Button variant="outline" size="sm">
-                    Change avatar
-                  </Button>
-                  <p className="text-xs text-muted-foreground">
-                    JPG, PNG or GIF. Max 2MB.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">First name</label>
-                  <Input defaultValue="Peter" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Last name</label>
-                  <Input defaultValue="Dinis" />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Email</label>
-                <Input defaultValue="peter@example.com" type="email" />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Bio</label>
-                <Textarea
-                  defaultValue="Building source-grounded research tools."
-                  rows={3}
-                />
-              </div>
-
-              <Button>Save changes</Button>
-            </CardContent>
-          </Card>
+          <ProfileSettingsCard />
         </TabsContent>
 
         <TabsContent value="ai" className="mt-6 space-y-6">

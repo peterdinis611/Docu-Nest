@@ -5,6 +5,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { useAction } from "next-safe-action/hooks"
+import { toast } from "sonner"
 import { createNotebookAction } from "@/actions/notebooks"
 import { Button } from "@/components/ui/button"
 import {
@@ -47,11 +48,26 @@ export function CreateNotebookDialog({
     createNotebookAction,
     {
       onSuccess: ({ data }) => {
+        toast.success("Notebook created", {
+          description: `"${data.title}" is ready to use.`,
+        })
         resetForm()
         resetAction()
         ;(onOpenChange ?? setInternalOpen)(false)
         router.push(`/notebook/${data.id}`)
         router.refresh()
+      },
+      onError: ({ error }) => {
+        const validationError =
+          error.validationErrors?.title?._errors?.[0] ??
+          error.validationErrors?.description?._errors?.[0]
+
+        toast.error(
+          validationError ??
+            (typeof error.serverError === "string"
+              ? error.serverError
+              : "Failed to create notebook. Please try again.")
+        )
       },
     }
   )
@@ -64,13 +80,8 @@ export function CreateNotebookDialog({
     ;(onOpenChange ?? setInternalOpen)(nextOpen)
   }
 
-  const titleError =
-    result.validationErrors?.title?._errors?.[0] ??
-    result.validationErrors?.title?.[0]
-  const descriptionError =
-    result.validationErrors?.description?._errors?.[0] ??
-    result.validationErrors?.description?.[0]
-  const serverError = result.serverError
+  const titleError = result.validationErrors?.title?._errors?.[0]
+  const descriptionError = result.validationErrors?.description?._errors?.[0]
 
   const canSubmit = title.trim().length > 0 && !isExecuting
 
@@ -136,9 +147,6 @@ export function CreateNotebookDialog({
               <p className="text-xs text-destructive">{descriptionError}</p>
             )}
           </div>
-          {serverError && (
-            <p className="text-xs text-destructive">{serverError}</p>
-          )}
         </div>
         <DialogFooter>
           <Button

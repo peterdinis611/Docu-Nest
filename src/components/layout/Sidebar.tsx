@@ -9,7 +9,6 @@ import {
   Home,
   LogOut,
   PanelLeftClose,
-  Plus,
   Search,
   Settings,
   Sparkles,
@@ -26,7 +25,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
-import { CreateNotebookDialog } from "@/components/dialogs/CreateNotebookDialog"
 import { useSearch } from "@/hooks/useSearch"
 import { mockNotebooks } from "@/data/mock"
 import { cn } from "@/lib/utils"
@@ -194,8 +192,8 @@ export function Sidebar({ onClose }: SidebarProps) {
           </Button>
         </div>
 
-        {/* ── Search + New ── */}
-        <div className="shrink-0 space-y-2 p-3">
+        {/* ── Search ── */}
+        <div className="shrink-0 p-3">
           <button
             type="button"
             onClick={openSearch}
@@ -207,15 +205,6 @@ export function Sidebar({ onClose }: SidebarProps) {
               ⌘K
             </kbd>
           </button>
-
-          <CreateNotebookDialog
-            trigger={
-              <Button className="h-8 w-full gap-2 bg-sidebar-primary text-sidebar-primary-foreground text-[13px] font-medium shadow-md shadow-sidebar-primary/25 hover:bg-sidebar-primary/90">
-                <Plus className="size-3.5" />
-                New notebook
-              </Button>
-            }
-          />
         </div>
 
         <div className="mx-3 h-px bg-sidebar-border" />
