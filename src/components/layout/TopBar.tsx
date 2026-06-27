@@ -32,7 +32,6 @@ interface TopBarProps {
   totalSources: number
   sourcesPanelOpen: boolean
   studioPanelOpen: boolean
-  onSelectNotebook: (id: string) => void
   onToggleSources: () => void
   onToggleStudio: () => void
 }
@@ -44,7 +43,6 @@ export function TopBar({
   totalSources,
   sourcesPanelOpen,
   studioPanelOpen,
-  onSelectNotebook,
   onToggleSources,
   onToggleStudio,
 }: TopBarProps) {
@@ -98,15 +96,16 @@ export function TopBar({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-72">
             {notebooks.map((nb) => (
-              <DropdownMenuItem
-                key={nb.id}
-                onClick={() => onSelectNotebook(nb.id)}
-                className="flex flex-col items-start gap-0.5 py-2.5"
-              >
-                <span className="font-medium">{nb.title}</span>
-                <span className="text-xs text-muted-foreground">
-                  {nb.sourceCount} sources · {nb.messageCount} messages
-                </span>
+              <DropdownMenuItem key={nb.id} asChild>
+                <Link
+                  href={`/notebook/${nb.id}`}
+                  className="flex flex-col items-start gap-0.5 py-2.5"
+                >
+                  <span className="font-medium">{nb.title}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {nb.sourceCount} sources · {nb.messageCount} messages
+                  </span>
+                </Link>
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />

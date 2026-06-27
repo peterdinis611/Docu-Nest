@@ -31,6 +31,15 @@ export interface Notebook {
   tags?: string[]
 }
 
+export interface NotebookPageData {
+  notebook: Notebook
+  notebooks: Notebook[]
+  documents: SourceDocument[]
+  messages: ChatMessage[]
+  savedNotes: SavedNote[]
+  studioOutputs: StudioOutput[]
+}
+
 export interface ActivityItem {
   id: string
   type: "chat" | "upload" | "studio" | "note"

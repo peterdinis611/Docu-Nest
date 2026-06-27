@@ -19,7 +19,6 @@ export function AppShell({ notebook }: AppShellProps) {
         totalSources={notebook.documents.length}
         sourcesPanelOpen={notebook.sourcesPanelOpen}
         studioPanelOpen={notebook.studioPanelOpen}
-        onSelectNotebook={notebook.selectNotebook}
         onToggleSources={notebook.toggleSourcesPanel}
         onToggleStudio={notebook.toggleStudioPanel}
       />

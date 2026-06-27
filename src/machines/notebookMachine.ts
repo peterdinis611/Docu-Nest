@@ -37,6 +37,15 @@ export interface NotebookContext {
 
 export type NotebookEvent =
   | { type: "LOAD" }
+  | {
+      type: "HYDRATE_FROM_SERVER"
+      notebook: Notebook
+      notebooks: Notebook[]
+      documents: SourceDocument[]
+      messages: ChatMessage[]
+      savedNotes: SavedNote[]
+      studioOutputs: StudioOutput[]
+    }
   | { type: "SELECT_NOTEBOOK"; notebookId: string }
   | { type: "TOGGLE_DOCUMENT"; documentId: string }
   | { type: "SELECT_DOCUMENT"; documentId: string | null }
@@ -66,6 +75,33 @@ export const notebookMachine = setup({
       savedNotes: () => mockSavedNotes,
       suggestedQuestions: () => mockSuggestedQuestions,
       sourceGuide: () => mockSourceGuide,
+    }),
+    hydrateFromServer: assign({
+      notebooks: ({ event }) =>
+        event.type === "HYDRATE_FROM_SERVER" ? event.notebooks : [],
+      activeNotebookId: ({ event }) =>
+        event.type === "HYDRATE_FROM_SERVER" ? event.notebook.id : "",
+      documents: ({ event }) =>
+        event.type === "HYDRATE_FROM_SERVER" ? event.documents : [],
+      messages: ({ event }) =>
+        event.type === "HYDRATE_FROM_SERVER" ? event.messages : [],
+      savedNotes: ({ event }) =>
+        event.type === "HYDRATE_FROM_SERVER" ? event.savedNotes : [],
+      studioOutputs: ({ event }) =>
+        event.type === "HYDRATE_FROM_SERVER" ? event.studioOutputs : [],
+      suggestedQuestions: ({ event }) =>
+        event.type === "HYDRATE_FROM_SERVER" && event.documents.length > 0
+          ? mockSuggestedQuestions
+          : [],
+      sourceGuide: ({ event }) =>
+        event.type === "HYDRATE_FROM_SERVER" && event.documents.length > 0
+          ? mockSourceGuide
+          : "Add sources to this notebook to start chatting with your documents.",
+      selectedDocumentId: () => null,
+      activeStudioOutputId: () => null,
+      draft: () => "",
+      isResponding: () => false,
+      generatingStudioType: () => null,
     }),
     selectNotebook: assign({
       activeNotebookId: ({ event }) =>
@@ -196,10 +232,12 @@ export const notebookMachine = setup({
     idle: {
       on: {
         LOAD: { target: "ready", actions: "load" },
+        HYDRATE_FROM_SERVER: { target: "ready", actions: "hydrateFromServer" },
       },
     },
     ready: {
       on: {
+        HYDRATE_FROM_SERVER: { actions: "hydrateFromServer" },
         SELECT_NOTEBOOK: { actions: "selectNotebook" },
         TOGGLE_DOCUMENT: { actions: "toggleDocument" },
         SELECT_DOCUMENT: { actions: "selectDocument" },

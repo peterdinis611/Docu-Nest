@@ -25,9 +25,9 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { mockActivity, mockNotebooks, mockUsageMetrics } from "@/data/mock"
+import { mockActivity, mockUsageMetrics } from "@/data/mock"
 import { cn } from "@/lib/utils"
-import type { ActivityItem } from "@/types"
+import type { ActivityItem, Notebook } from "@/types"
 
 const activityIcons: Record<ActivityItem["type"], typeof MessageSquare> = {
   chat: MessageSquare,
@@ -65,14 +65,15 @@ const metricValueColors = [
   "text-emerald-600 dark:text-emerald-400",
 ]
 
-export function HomePage() {
-  const totalSources = mockNotebooks.reduce((s, n) => s + n.sourceCount, 0)
+export function HomePage({ notebooks }: { notebooks: Notebook[] }) {
+  const totalSources = notebooks.reduce((s, n) => s + n.sourceCount, 0)
+  const featured = notebooks[0]
 
   return (
     <>
       <PageHeader
         title="Good morning, Peter 👋"
-        description={`${mockNotebooks.length} notebooks · ${totalSources} sources indexed`}
+        description={`${notebooks.length} notebooks · ${totalSources} sources indexed`}
         actions={
           <CreateNotebookDialog
             trigger={
@@ -88,39 +89,63 @@ export function HomePage() {
       <div className="mx-auto max-w-6xl space-y-8 px-6 py-8 lg:px-8">
 
         {/* ── Hero banner ── */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/90 to-primary p-7 text-primary-foreground shadow-xl shadow-primary/20 dark:shadow-primary/10 lg:p-8">
-          {/* decorative blobs */}
-          <div className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-white/10 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-10 left-20 size-40 rounded-full bg-black/10 blur-2xl" />
+        {featured ? (
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/90 to-primary p-7 text-primary-foreground shadow-xl shadow-primary/20 dark:shadow-primary/10 lg:p-8">
+            <div className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-white/10 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-10 left-20 size-40 rounded-full bg-black/10 blur-2xl" />
 
-          <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5">
-                <Zap className="size-3.5 opacity-80" />
-                <span className="text-[11px] font-semibold uppercase tracking-widest opacity-75">
-                  Continue where you left off
-                </span>
+            <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <Zap className="size-3.5 opacity-80" />
+                  <span className="text-[11px] font-semibold uppercase tracking-widest opacity-75">
+                    Continue where you left off
+                  </span>
+                </div>
+                <h2 className="text-2xl font-bold tracking-tight">
+                  {featured.title}
+                </h2>
+                <p className="max-w-sm text-sm opacity-75">
+                  {featured.sourceCount} sources loaded · Last active{" "}
+                  {formatRelativeTime(featured.updatedAt)}
+                </p>
               </div>
-              <h2 className="text-2xl font-bold tracking-tight">
-                Transformer & RAG Research
-              </h2>
-              <p className="max-w-sm text-sm opacity-75">
-                4 sources loaded · Last active 2 hours ago
-              </p>
+              <Button
+                asChild
+                variant="secondary"
+                size="lg"
+                className="gap-2 bg-white/15 text-primary-foreground hover:bg-white/25 dark:bg-white/10 dark:hover:bg-white/20"
+              >
+                <Link href={`/notebook/${featured.id}`}>
+                  <BookOpen className="size-4" />
+                  Open notebook
+                </Link>
+              </Button>
             </div>
-            <Button
-              asChild
-              variant="secondary"
-              size="lg"
-              className="gap-2 bg-white/15 text-primary-foreground hover:bg-white/25 dark:bg-white/10 dark:hover:bg-white/20"
-            >
-              <Link href="/notebook/nb-1">
-                <BookOpen className="size-4" />
-                Open notebook
-              </Link>
-            </Button>
           </div>
-        </div>
+        ) : (
+          <div className="relative overflow-hidden rounded-2xl border border-dashed border-border/80 bg-muted/20 p-7 lg:p-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <h2 className="text-xl font-semibold tracking-tight">
+                  Create your first notebook
+                </h2>
+                <p className="max-w-md text-sm text-muted-foreground">
+                  Upload documents, chat with AI, and generate study materials in
+                  one workspace.
+                </p>
+              </div>
+              <CreateNotebookDialog
+                trigger={
+                  <Button className="gap-2">
+                    <Plus className="size-4" />
+                    New notebook
+                  </Button>
+                }
+              />
+            </div>
+          </div>
+        )}
 
         {/* ── Stat cards ── */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -176,7 +201,25 @@ export function HomePage() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              {mockNotebooks.map((notebook) => (
+              {notebooks.length === 0 ? (
+                <Card className="col-span-full border border-dashed border-border/80 bg-muted/10">
+                  <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+                    <BookOpen className="size-8 text-muted-foreground/50" />
+                    <p className="text-sm text-muted-foreground">
+                      No notebooks yet. Create one to get started.
+                    </p>
+                    <CreateNotebookDialog
+                      trigger={
+                        <Button size="sm" className="gap-2">
+                          <Plus className="size-4" />
+                          New notebook
+                        </Button>
+                      }
+                    />
+                  </CardContent>
+                </Card>
+              ) : (
+                notebooks.map((notebook) => (
                 <Link key={notebook.id} href={`/notebook/${notebook.id}`}>
                   <Card className="group h-full overflow-hidden border border-border/50 bg-card shadow-sm transition-all duration-200 hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5">
                     {/* colour strip */}
@@ -216,7 +259,8 @@ export function HomePage() {
                     </CardContent>
                   </Card>
                 </Link>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
@@ -267,12 +311,23 @@ export function HomePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button asChild className="w-full gap-2" size="sm">
-                  <Link href="/notebook/nb-1">
-                    <BookOpen className="size-4" />
-                    Continue researching
-                  </Link>
-                </Button>
+                {featured ? (
+                  <Button asChild className="w-full gap-2" size="sm">
+                    <Link href={`/notebook/${featured.id}`}>
+                      <BookOpen className="size-4" />
+                      Continue researching
+                    </Link>
+                  </Button>
+                ) : (
+                  <CreateNotebookDialog
+                    trigger={
+                      <Button className="w-full gap-2" size="sm">
+                        <Plus className="size-4" />
+                        Create notebook
+                      </Button>
+                    }
+                  />
+                )}
               </CardContent>
             </Card>
           </div>

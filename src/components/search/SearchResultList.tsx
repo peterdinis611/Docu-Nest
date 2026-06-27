@@ -1,8 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import { useVirtualizer } from "@tanstack/react-virtual"
-import { motion } from "framer-motion"
 import type { LucideIcon } from "lucide-react"
 import type { SearchItem, SearchItemKind } from "@/lib/search-index"
 import { cn } from "@/lib/utils"
@@ -80,6 +79,21 @@ export function SearchResultList({
     overscan: 10,
   })
 
+  useLayoutEffect(() => {
+    virtualizer.measure()
+  }, [rows, virtualizer])
+
+  useEffect(() => {
+    const el = parentRef.current
+    if (!el) return
+
+    const observer = new ResizeObserver(() => {
+      virtualizer.measure()
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [virtualizer])
+
   useEffect(() => {
     const rowIndex = rows.findIndex(
       (row) => row.type === "item" && row.resultIndex === activeIndex
@@ -89,12 +103,11 @@ export function SearchResultList({
     }
   }, [activeIndex, rows, virtualizer])
 
+  if (rows.length === 0) return null
+
   return (
     <div ref={parentRef} className="max-h-80 overflow-y-auto p-2">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.15 }}
+      <div
         style={{
           height: `${virtualizer.getTotalSize()}px`,
           width: "100%",
@@ -167,7 +180,7 @@ export function SearchResultList({
             </div>
           )
         })}
-      </motion.div>
+      </div>
     </div>
   )
 }

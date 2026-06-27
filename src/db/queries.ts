@@ -8,6 +8,41 @@ import {
   studioOutputs,
 } from "./schema"
 
+export function createNotebookForUser(
+  userId: string,
+  input: {
+    id: string
+    title: string
+    description?: string
+    color: string
+  }
+) {
+  const now = new Date().toISOString()
+
+  db.insert(notebooks)
+    .values({
+      id: input.id,
+      userId,
+      title: input.title,
+      description: input.description ?? null,
+      color: input.color,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .run()
+
+  return {
+    id: input.id,
+    title: input.title,
+    description: input.description ?? null,
+    color: input.color,
+    tags: null,
+    createdAt: now,
+    updatedAt: now,
+    userId,
+  }
+}
+
 export function listNotebooksForUser(userId: string) {
   return db
     .select({
@@ -46,22 +81,24 @@ export function listSourcesForUser(userId: string) {
 }
 
 export function getNotebookById(notebookId: string, userId: string) {
-  return db.query.notebooks.findFirst({
-    where: (table, { and, eq: equals }) =>
-      and(equals(table.id, notebookId), equals(table.userId, userId)),
-    with: {
-      sources: true,
-      messages: {
-        orderBy: (table, { asc }) => asc(table.createdAt),
+  return db.query.notebooks
+    .findFirst({
+      where: (table, { and, eq: equals }) =>
+        and(equals(table.id, notebookId), equals(table.userId, userId)),
+      with: {
+        sources: true,
+        messages: {
+          orderBy: (table, { asc }) => asc(table.createdAt),
+        },
+        savedNotes: {
+          orderBy: (table, { desc }) => desc(table.createdAt),
+        },
+        studioOutputs: {
+          orderBy: (table, { desc }) => desc(table.createdAt),
+        },
       },
-      savedNotes: {
-        orderBy: (table, { desc }) => desc(table.createdAt),
-      },
-      studioOutputs: {
-        orderBy: (table, { desc }) => desc(table.createdAt),
-      },
-    },
-  })
+    })
+    .sync()
 }
 
 export function listSourcesForNotebook(notebookId: string) {

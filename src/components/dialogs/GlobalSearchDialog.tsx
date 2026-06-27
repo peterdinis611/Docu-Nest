@@ -53,12 +53,15 @@ export function GlobalSearchDialog() {
   const [query, setQuery] = useState("")
   const [activeIndex, setActiveIndex] = useState(0)
 
-  const { execute, result, isExecuting, hasErrored } = useAction(
+  const { execute, result, isExecuting, hasErrored, reset } = useAction(
     globalSearchAction
   )
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      reset()
+      return
+    }
 
     const delay = query.trim() ? 200 : 0
     const timer = window.setTimeout(() => {
@@ -66,11 +69,12 @@ export function GlobalSearchDialog() {
     }, delay)
 
     return () => window.clearTimeout(timer)
-  }, [open, query, execute])
+  }, [open, query, execute, reset])
 
   const results = result.data?.items ?? []
-  const showLoading = isExecuting && results.length === 0
-  const showEmpty = !isExecuting && (hasErrored || results.length === 0)
+  const showLoading = open && isExecuting && results.length === 0
+  const showEmpty =
+    open && !isExecuting && (hasErrored || results.length === 0)
   const emptyVariant = hasErrored
     ? "error"
     : query.trim()
@@ -158,7 +162,7 @@ export function GlobalSearchDialog() {
           </kbd>
         </div>
 
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout" initial={false}>
           {showLoading ? (
             <motion.div
               key="loading"

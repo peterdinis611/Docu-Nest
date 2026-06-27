@@ -1,20 +1,15 @@
 "use client"
 
-import { useEffect } from "react"
-import { useParams } from "next/navigation"
 import { AppShell } from "@/components/layout/AppShell"
 import { useNotebook } from "@/hooks/useNotebook"
+import type { NotebookPageData } from "@/types"
 
-export function NotebookPage() {
-  const params = useParams()
-  const notebookId = params.notebookId as string | undefined
-  const notebook = useNotebook()
+interface NotebookPageProps {
+  data: NotebookPageData
+}
 
-  useEffect(() => {
-    if (notebookId) {
-      notebook.selectNotebook(notebookId)
-    }
-  }, [notebookId]) // eslint-disable-line react-hooks/exhaustive-deps
+export function NotebookPage({ data }: NotebookPageProps) {
+  const notebook = useNotebook(data)
 
   return <AppShell notebook={notebook} />
 }

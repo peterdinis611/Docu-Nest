@@ -1,16 +1,34 @@
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { useMachine } from "@xstate/react"
 import { notebookMachine } from "@/machines/notebookMachine"
-import type { StudioOutputType } from "@/types"
+import type { NotebookPageData, StudioOutputType } from "@/types"
 
-export function useNotebook() {
+export function useNotebook(serverData?: NotebookPageData) {
   const [state, send] = useMachine(notebookMachine)
+  const hydratedIdRef = useRef<string | null>(null)
+  const notebookId = serverData?.notebook.id
 
   useEffect(() => {
+    if (serverData) {
+      if (hydratedIdRef.current === serverData.notebook.id) return
+      hydratedIdRef.current = serverData.notebook.id
+
+      send({
+        type: "HYDRATE_FROM_SERVER",
+        notebook: serverData.notebook,
+        notebooks: serverData.notebooks,
+        documents: serverData.documents,
+        messages: serverData.messages,
+        savedNotes: serverData.savedNotes,
+        studioOutputs: serverData.studioOutputs,
+      })
+      return
+    }
+
     if (state.matches("idle")) {
       send({ type: "LOAD" })
     }
-  }, [state, send])
+  }, [notebookId, serverData, state, send])
 
   const activeNotebook = state.context.notebooks.find(
     (n) => n.id === state.context.activeNotebookId

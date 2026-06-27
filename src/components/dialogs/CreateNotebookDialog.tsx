@@ -1,5 +1,11 @@
+"use client"
+
 import type { ReactNode } from "react"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { Loader2 } from "lucide-react"
+import { useAction } from "next-safe-action/hooks"
+import { createNotebookAction } from "@/actions/notebooks"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -24,13 +30,63 @@ export function CreateNotebookDialog({
   open: controlledOpen,
   onOpenChange,
 }: CreateNotebookDialogProps) {
+  const router = useRouter()
   const [internalOpen, setInternalOpen] = useState(false)
+  const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
+
   const isControlled = controlledOpen !== undefined
   const open = isControlled ? controlledOpen : internalOpen
-  const setOpen = onOpenChange ?? setInternalOpen
+
+  function resetForm() {
+    setTitle("")
+    setDescription("")
+  }
+
+  const { execute, isExecuting, result, reset: resetAction } = useAction(
+    createNotebookAction,
+    {
+      onSuccess: ({ data }) => {
+        resetForm()
+        resetAction()
+        ;(onOpenChange ?? setInternalOpen)(false)
+        router.push(`/notebook/${data.id}`)
+        router.refresh()
+      },
+    }
+  )
+
+  const setOpen = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      resetForm()
+      resetAction()
+    }
+    ;(onOpenChange ?? setInternalOpen)(nextOpen)
+  }
+
+  const titleError =
+    result.validationErrors?.title?._errors?.[0] ??
+    result.validationErrors?.title?.[0]
+  const descriptionError =
+    result.validationErrors?.description?._errors?.[0] ??
+    result.validationErrors?.description?.[0]
+  const serverError = result.serverError
+
+  const canSubmit = title.trim().length > 0 && !isExecuting
+
+  function handleCreate() {
+    execute({
+      title: title.trim(),
+      description: description.trim() || undefined,
+    })
+  }
+
+  function handleOpenChange(nextOpen: boolean) {
+    setOpen(nextOpen)
+  }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent>
         <DialogHeader>
@@ -47,24 +103,61 @@ export function CreateNotebookDialog({
             <Input
               id="notebook-title"
               placeholder="e.g. Q3 Market Research"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && canSubmit) {
+                  e.preventDefault()
+                  handleCreate()
+                }
+              }}
+              aria-invalid={Boolean(titleError)}
+              autoFocus
             />
+            {titleError && (
+              <p className="text-xs text-destructive">{titleError}</p>
+            )}
           </div>
           <div className="space-y-2">
             <label htmlFor="notebook-desc" className="text-sm font-medium">
               Description
+              <span className="ml-1 font-normal text-muted-foreground">
+                (optional)
+              </span>
             </label>
             <Textarea
               id="notebook-desc"
               placeholder="What will you explore in this notebook?"
               rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
             />
+            {descriptionError && (
+              <p className="text-xs text-destructive">{descriptionError}</p>
+            )}
           </div>
+          {serverError && (
+            <p className="text-xs text-destructive">{serverError}</p>
+          )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button
+            variant="outline"
+            onClick={() => setOpen(false)}
+            disabled={isExecuting}
+          >
             Cancel
           </Button>
-          <Button onClick={() => setOpen(false)}>Create</Button>
+          <Button onClick={handleCreate} disabled={!canSubmit}>
+            {isExecuting ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Creating…
+              </>
+            ) : (
+              "Create"
+            )}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
