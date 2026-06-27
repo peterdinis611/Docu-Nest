@@ -38,28 +38,28 @@ const pageItems: SearchItem[] = [
     kind: "page",
     title: "Home",
     subtitle: "Dashboard and notebooks overview",
-    href: "/",
+    href: "/app",
   },
   {
     id: "page-library",
     kind: "page",
     title: "Library",
     subtitle: "Browse all documents",
-    href: "/library",
+    href: "/app/library",
   },
   {
     id: "page-analytics",
     kind: "page",
     title: "Analytics",
     subtitle: "Usage insights",
-    href: "/analytics",
+    href: "/app/analytics",
   },
   {
     id: "page-settings",
     kind: "page",
     title: "Settings",
     subtitle: "Account and preferences",
-    href: "/settings",
+    href: "/app/settings",
   },
 ]
 

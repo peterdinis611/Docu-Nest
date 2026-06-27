@@ -12,6 +12,8 @@ dist
 .next
 out
 *.local
+data/
+*.db
 
 # Editor directories and files
 .vscode/*
