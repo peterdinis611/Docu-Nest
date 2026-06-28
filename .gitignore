@@ -12,6 +12,12 @@ dist
 .next
 out
 *.local
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
 data/
 *.db
 
