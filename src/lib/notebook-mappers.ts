@@ -43,6 +43,10 @@ export function mapSourceDocument(row: SourceRow): SourceDocument {
     pageCount: row.pageCount ?? undefined,
     uploadedAt: row.uploadedAt,
     enabled: row.enabled,
+    fileKey: row.fileKey ?? undefined,
+    fileUrl: row.fileUrl ?? undefined,
+    mimeType: row.mimeType ?? undefined,
+    originalName: row.originalName ?? undefined,
   }
 }
 

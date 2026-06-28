@@ -46,6 +46,7 @@ export type NotebookEvent =
       savedNotes: SavedNote[]
       studioOutputs: StudioOutput[]
     }
+  | { type: "ADD_SOURCE"; source: SourceDocument }
   | { type: "SELECT_NOTEBOOK"; notebookId: string }
   | { type: "TOGGLE_DOCUMENT"; documentId: string }
   | { type: "SELECT_DOCUMENT"; documentId: string | null }
@@ -109,6 +110,22 @@ export const notebookMachine = setup({
       messages: () => [],
       studioOutputs: () => [],
       activeStudioOutputId: () => null,
+    }),
+    addSource: assign({
+      documents: ({ context, event }) => {
+        if (event.type !== "ADD_SOURCE") return context.documents
+        return [event.source, ...context.documents]
+      },
+      sourceGuide: ({ context, event }) => {
+        if (event.type !== "ADD_SOURCE") return context.sourceGuide
+        if (context.documents.length > 0) return context.sourceGuide
+        return mockSourceGuide
+      },
+      suggestedQuestions: ({ context, event }) => {
+        if (event.type !== "ADD_SOURCE") return context.suggestedQuestions
+        if (context.documents.length > 0) return context.suggestedQuestions
+        return mockSuggestedQuestions
+      },
     }),
     toggleDocument: assign({
       documents: ({ context, event }) => {
@@ -238,6 +255,7 @@ export const notebookMachine = setup({
     ready: {
       on: {
         HYDRATE_FROM_SERVER: { actions: "hydrateFromServer" },
+        ADD_SOURCE: { actions: "addSource" },
         SELECT_NOTEBOOK: { actions: "selectNotebook" },
         TOGGLE_DOCUMENT: { actions: "toggleDocument" },
         SELECT_DOCUMENT: { actions: "selectDocument" },

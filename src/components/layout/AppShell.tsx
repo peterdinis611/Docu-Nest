@@ -31,10 +31,12 @@ export function AppShell({ notebook }: AppShellProps) {
           )}
         >
           <SourcesPanel
+            notebookId={notebook.activeNotebook?.id ?? ""}
             documents={notebook.documents}
             selectedDocumentId={notebook.selectedDocumentId}
             onToggleDocument={notebook.toggleDocument}
             onSelectDocument={notebook.selectDocument}
+            onSourceAdded={notebook.addSource}
           />
         </div>
 

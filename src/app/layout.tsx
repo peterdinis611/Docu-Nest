@@ -1,6 +1,9 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
 import { ClerkProvider } from "@clerk/nextjs"
+import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin"
+import { extractRouterConfig } from "uploadthing/server"
+import { ourFileRouter } from "@/app/api/uploadthing/core"
 import { Providers } from "@/components/providers"
 import { clerkAppearance } from "@/lib/clerk-appearance"
 import "./globals.css"
@@ -24,6 +27,7 @@ export default function RootLayout({
           <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         </head>
         <body>
+          <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />
           <Providers>
             <Suspense fallback={null}>{children}</Suspense>
           </Providers>

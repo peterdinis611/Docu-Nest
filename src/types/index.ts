@@ -93,6 +93,10 @@ export interface SourceDocument {
   pageCount?: number
   uploadedAt: string
   enabled: boolean
+  fileKey?: string
+  fileUrl?: string
+  mimeType?: string
+  originalName?: string
 }
 
 export interface Citation {

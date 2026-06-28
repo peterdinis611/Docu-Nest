@@ -1,4 +1,4 @@
-import { desc, eq, sql } from "drizzle-orm"
+import { desc, eq, sql, and } from "drizzle-orm"
 import { db } from "./index"
 import {
   messages,
@@ -41,6 +41,56 @@ export function createNotebookForUser(
     updatedAt: now,
     userId,
   }
+}
+
+export function createSourceForNotebook(
+  userId: string,
+  input: {
+    id: string
+    notebookId: string
+    title: string
+    type: "pdf" | "article" | "note" | "webpage"
+    description?: string
+    fileKey: string
+    fileUrl: string
+    mimeType?: string
+    originalName: string
+  }
+) {
+  const notebook = db
+    .select({ id: notebooks.id })
+    .from(notebooks)
+    .where(and(eq(notebooks.id, input.notebookId), eq(notebooks.userId, userId)))
+    .get()
+
+  if (!notebook) {
+    throw new Error("Notebook not found")
+  }
+
+  const now = new Date().toISOString()
+
+  db.insert(sources)
+    .values({
+      id: input.id,
+      notebookId: input.notebookId,
+      title: input.title,
+      type: input.type,
+      description: input.description ?? "Uploaded file — indexing pending.",
+      fileKey: input.fileKey,
+      fileUrl: input.fileUrl,
+      mimeType: input.mimeType ?? null,
+      originalName: input.originalName,
+      enabled: true,
+      uploadedAt: now,
+    })
+    .run()
+
+  db.update(notebooks)
+    .set({ updatedAt: now })
+    .where(eq(notebooks.id, input.notebookId))
+    .run()
+
+  return db.select().from(sources).where(eq(sources.id, input.id)).get()!
 }
 
 export function listNotebooksForUser(userId: string, limit?: number) {

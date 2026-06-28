@@ -1,3 +1,5 @@
+"use client"
+
 import { useMemo, useState } from "react"
 import {
   FileText,
@@ -52,17 +54,21 @@ const typeConfig: Record<
 }
 
 interface SourcesPanelProps {
+  notebookId: string
   documents: SourceDocument[]
   selectedDocumentId: string | null
   onToggleDocument: (id: string) => void
   onSelectDocument: (id: string | null) => void
+  onSourceAdded: (source: SourceDocument) => void
 }
 
 export function SourcesPanel({
+  notebookId,
   documents,
   selectedDocumentId,
   onToggleDocument,
   onSelectDocument,
+  onSourceAdded,
 }: SourcesPanelProps) {
   const [query, setQuery] = useState("")
   const enabledCount = documents.filter((d) => d.enabled).length
@@ -103,6 +109,8 @@ export function SourcesPanel({
         </div>
         <div className="grid grid-cols-2 gap-2">
           <AddSourceDialog
+            notebookId={notebookId}
+            onSourceAdded={onSourceAdded}
             trigger={
               <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
                 <Plus className="size-3.5" />
@@ -111,6 +119,9 @@ export function SourcesPanel({
             }
           />
           <AddSourceDialog
+            notebookId={notebookId}
+            defaultTab="upload"
+            onSourceAdded={onSourceAdded}
             trigger={
               <Button size="sm" className="h-8 gap-1.5 text-xs">
                 <Upload className="size-3.5" />
@@ -125,7 +136,9 @@ export function SourcesPanel({
         <div className="space-y-2 px-3 pb-4">
           {filtered.length === 0 ? (
             <p className="px-2 py-8 text-center text-xs text-muted-foreground">
-              No sources match your search
+              {documents.length === 0
+                ? "No sources yet. Upload a file to get started."
+                : "No sources match your search"}
             </p>
           ) : (
             filtered.map((doc) => {

@@ -29,6 +29,10 @@ export const sources = sqliteTable("sources", {
   }).notNull(),
   description: text("description").notNull().default(""),
   pageCount: integer("page_count"),
+  fileKey: text("file_key"),
+  fileUrl: text("file_url"),
+  mimeType: text("mime_type"),
+  originalName: text("original_name"),
   enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
   uploadedAt: text("uploaded_at")
     .notNull()

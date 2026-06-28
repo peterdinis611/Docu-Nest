@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react"
 import { useMachine } from "@xstate/react"
 import { notebookMachine } from "@/machines/notebookMachine"
-import type { NotebookPageData, StudioOutputType } from "@/types"
+import type { NotebookPageData, SourceDocument, StudioOutputType } from "@/types"
 
 export function useNotebook(serverData?: NotebookPageData) {
   const [state, send] = useMachine(notebookMachine)
@@ -59,6 +59,8 @@ export function useNotebook(serverData?: NotebookPageData) {
     enabledCount,
     selectNotebook: (notebookId: string) =>
       send({ type: "SELECT_NOTEBOOK", notebookId }),
+    addSource: (source: SourceDocument) =>
+      send({ type: "ADD_SOURCE", source }),
     toggleDocument: (documentId: string) =>
       send({ type: "TOGGLE_DOCUMENT", documentId }),
     selectDocument: (documentId: string | null) =>
