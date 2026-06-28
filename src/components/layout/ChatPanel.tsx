@@ -39,18 +39,7 @@ export function ChatPanel({
   const enabledCount = documents.filter((d) => d.enabled).length
 
   return (
-    <main className="relative flex min-w-0 flex-1 flex-col bg-surface">
-      {/* Subtle background */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_0%,var(--color-primary)/0.06,transparent)]" />
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.35] dark:opacity-[0.15]"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle, var(--color-border) 1px, transparent 1px)",
-          backgroundSize: "24px 24px",
-        }}
-      />
-
+    <main className="relative flex min-w-0 flex-1 flex-col bg-background">
       {previewDoc ? (
         <DocumentPreview document={previewDoc} onClose={onClosePreview} />
       ) : (
@@ -59,8 +48,8 @@ export function ChatPanel({
             {showWelcome ? (
               <div className="mx-auto flex w-full max-w-2xl flex-col gap-10 px-6 py-16">
                 <div className="space-y-4 text-center">
-                  <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/20">
-                    <MessageSquare className="size-6 text-primary-foreground" />
+                  <div className="mx-auto flex size-12 items-center justify-center rounded-lg border bg-muted">
+                    <MessageSquare className="size-5 text-muted-foreground" />
                   </div>
                   <div className="space-y-2">
                     <h1 className="text-2xl font-semibold tracking-tight">

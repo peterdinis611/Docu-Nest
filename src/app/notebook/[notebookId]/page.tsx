@@ -1,17 +1,30 @@
+import { Suspense } from "react"
 import { auth } from "@clerk/nextjs/server"
 import { notFound } from "next/navigation"
-import { getNotebookById, listNotebooksForUser } from "@/db/queries"
-import {
-  mapChatMessage,
-  mapNotebookSummary,
-  mapSavedNote,
-  mapSourceDocument,
-  mapStudioOutput,
-} from "@/lib/notebook-mappers"
+import { getCachedNotebookPageData } from "@/lib/cached-data"
 import { NotebookPage } from "@/views/NotebookPage"
-import type { NotebookPageData } from "@/types"
 
-export default async function Page({
+export default function Page({
+  params,
+}: {
+  params: Promise<{ notebookId: string }>
+}) {
+  return (
+    <Suspense fallback={<NotebookPageFallback />}>
+      <NotebookPageContent params={params} />
+    </Suspense>
+  )
+}
+
+function NotebookPageFallback() {
+  return (
+    <div className="flex h-screen items-center justify-center bg-background">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-foreground" />
+    </div>
+  )
+}
+
+async function NotebookPageContent({
   params,
 }: {
   params: Promise<{ notebookId: string }>
@@ -23,30 +36,10 @@ export default async function Page({
     notFound()
   }
 
-  const record = getNotebookById(notebookId, userId)
+  const data = await getCachedNotebookPageData(userId, notebookId)
 
-  if (!record) {
+  if (!data) {
     notFound()
-  }
-
-  const summaries = listNotebooksForUser(userId)
-
-  const data: NotebookPageData = {
-    notebook: mapNotebookSummary({
-      id: record.id,
-      title: record.title,
-      description: record.description,
-      color: record.color,
-      tags: record.tags,
-      updatedAt: record.updatedAt,
-      sourceCount: record.sources.length,
-      messageCount: record.messages.length,
-    }),
-    notebooks: summaries.map(mapNotebookSummary),
-    documents: record.sources.map(mapSourceDocument),
-    messages: record.messages.map(mapChatMessage),
-    savedNotes: record.savedNotes.map(mapSavedNote),
-    studioOutputs: record.studioOutputs.map(mapStudioOutput),
   }
 
   return <NotebookPage data={data} />

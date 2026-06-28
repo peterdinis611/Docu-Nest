@@ -49,7 +49,7 @@ export function TopBar({
   const { openSearch } = useSearch()
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b bg-card/80 px-4 backdrop-blur-md">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b bg-background px-4">
       <div className="flex items-center gap-1.5">
         <Button
           variant="ghost"

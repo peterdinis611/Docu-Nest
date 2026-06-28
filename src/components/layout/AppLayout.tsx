@@ -37,7 +37,7 @@ export function AppLayout({
   }, [sidebarOpen])
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface">
+    <div className="flex h-screen overflow-hidden bg-background">
       <div
         className={cn(
           "shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out",
@@ -47,12 +47,9 @@ export function AppLayout({
         <Sidebar onClose={() => setSidebarOpen(false)} notebooks={recentNotebooks} />
       </div>
 
-      <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/[0.03] via-transparent to-transparent" />
-
-        {/* Compact top bar when sidebar is hidden */}
+      <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
         {!sidebarOpen && (
-          <header className="relative z-10 flex h-14 shrink-0 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur-md">
+          <header className="relative z-10 flex h-14 shrink-0 items-center gap-3 border-b bg-background px-4">
             <Button
               variant="outline"
               size="icon"
@@ -63,8 +60,8 @@ export function AppLayout({
               <PanelLeft className="size-4" />
             </Button>
             <Link href="/app" className="flex items-center gap-2 text-sm font-semibold">
-              <div className="flex size-7 items-center justify-center rounded-md bg-primary">
-                <Sparkles className="size-3.5 text-primary-foreground" />
+              <div className="flex size-7 items-center justify-center rounded-md border bg-muted">
+                <Sparkles className="size-3.5 text-foreground" />
               </div>
               DocuNest
             </Link>

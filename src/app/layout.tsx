@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import { ClerkProvider } from "@clerk/nextjs"
 import { Providers } from "@/components/providers"
 import { clerkAppearance } from "@/lib/clerk-appearance"
@@ -23,7 +24,9 @@ export default function RootLayout({
           <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         </head>
         <body>
-          <Providers>{children}</Providers>
+          <Providers>
+            <Suspense fallback={null}>{children}</Suspense>
+          </Providers>
         </body>
       </html>
     </ClerkProvider>

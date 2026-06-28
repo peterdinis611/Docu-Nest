@@ -1,8 +1,9 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { updateTag } from "next/cache"
 import { z } from "zod"
 import { createNotebookForUser } from "@/db/queries"
+import { cacheTags } from "@/lib/cache-tags"
 import { pickNotebookColor } from "@/lib/notebook-colors"
 import { authActionClient } from "@/lib/safe-action"
 
@@ -30,8 +31,9 @@ export const createNotebookAction = authActionClient
       color: pickNotebookColor(),
     })
 
-    revalidatePath("/app")
-    revalidatePath("/app/library")
+    updateTag(cacheTags.userNotebooks(userId))
+    updateTag(cacheTags.userAnalytics(userId))
+    updateTag(cacheTags.userNotebook(userId, notebook.id))
 
     return {
       id: notebook.id,

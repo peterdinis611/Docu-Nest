@@ -31,8 +31,8 @@ export function ChatInput({
       <div className="mx-auto max-w-2xl">
         <div
           className={cn(
-            "relative rounded-2xl border bg-card shadow-md transition-shadow",
-            hasDraft && "shadow-lg ring-1 ring-primary/10"
+            "relative rounded-lg border bg-card",
+            hasDraft && "border-foreground/20"
           )}
         >
           <Textarea
@@ -47,8 +47,8 @@ export function ChatInput({
           <Button
             size="icon"
             className={cn(
-              "absolute bottom-2.5 right-2.5 size-9 rounded-xl transition-all",
-              hasDraft ? "shadow-md" : "opacity-50"
+              "absolute bottom-2.5 right-2.5 size-8 rounded-md transition-opacity",
+              hasDraft ? "opacity-100" : "opacity-50"
             )}
             onClick={onSend}
             disabled={!hasDraft || isResponding}

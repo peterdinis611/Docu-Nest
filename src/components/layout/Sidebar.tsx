@@ -184,8 +184,8 @@ export function Sidebar({ onClose, notebooks }: SidebarProps) {
         {/* ── Logo / header ── */}
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-sidebar-border px-4">
           <Link href="/app" className="flex min-w-0 items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary">
-            <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary shadow-lg shadow-sidebar-primary/30">
-              <Sparkles className="size-3.5 text-sidebar-primary-foreground" />
+            <div className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-sidebar-accent">
+              <Sparkles className="size-3.5 text-sidebar-foreground" />
             </div>
             <span className="truncate text-[15px] font-bold tracking-tight text-sidebar-foreground">
               DocuNest

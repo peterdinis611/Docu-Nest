@@ -55,7 +55,6 @@ export function CreateNotebookDialog({
         resetAction()
         ;(onOpenChange ?? setInternalOpen)(false)
         router.push(`/notebook/${data.id}`)
-        router.refresh()
       },
       onError: ({ error }) => {
         const validationError =

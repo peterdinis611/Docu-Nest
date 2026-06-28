@@ -1,13 +1,19 @@
+import { Suspense } from "react"
 import { auth } from "@clerk/nextjs/server"
-import { listNotebooksForUser } from "@/db/queries"
-import { mapNotebookSummary } from "@/lib/notebook-mappers"
 import { HomePage } from "@/views/HomePage"
+import { getCachedNotebooksForUser } from "@/lib/cached-data"
 
-export default async function Page() {
+export default function Page() {
+  return (
+    <Suspense fallback={<HomePage notebooks={[]} />}>
+      <HomePageContent />
+    </Suspense>
+  )
+}
+
+async function HomePageContent() {
   const { userId } = await auth()
-  const notebooks = userId
-    ? listNotebooksForUser(userId).map(mapNotebookSummary)
-    : []
+  const notebooks = userId ? await getCachedNotebooksForUser(userId) : []
 
   return <HomePage notebooks={notebooks} />
 }

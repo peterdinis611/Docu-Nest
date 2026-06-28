@@ -9,10 +9,9 @@ import {
   MessageSquare,
   Plus,
   Sparkles,
-  TrendingUp,
   Upload,
-  Zap,
 } from "lucide-react"
+import { useUser } from "@clerk/nextjs"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { CreateNotebookDialog } from "@/components/dialogs/CreateNotebookDialog"
 import { Badge } from "@/components/ui/badge"
@@ -24,8 +23,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
 import { mockActivity, mockUsageMetrics } from "@/data/mock"
+import { getNotebookDotClass } from "@/lib/notebook-colors"
 import { cn } from "@/lib/utils"
 import type { ActivityItem, Notebook } from "@/types"
 
@@ -36,13 +35,6 @@ const activityIcons: Record<ActivityItem["type"], typeof MessageSquare> = {
   note: FileText,
 }
 
-const activityColors: Record<ActivityItem["type"], string> = {
-  chat:   "bg-violet-500/12 text-violet-600 dark:text-violet-400",
-  upload: "bg-sky-500/12 text-sky-600 dark:text-sky-400",
-  studio: "bg-amber-500/12 text-amber-600 dark:text-amber-400",
-  note:   "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400",
-}
-
 function formatRelativeTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
   const hours = Math.floor(diff / 3_600_000)
@@ -51,29 +43,25 @@ function formatRelativeTime(iso: string) {
   return `${Math.floor(hours / 24)}d ago`
 }
 
-const metricIcons = [TrendingUp, MessageSquare, Sparkles, Zap]
-const metricColors = [
-  "from-violet-500/15 to-violet-500/5 ring-violet-200 dark:ring-violet-800/60",
-  "from-sky-500/15 to-sky-500/5 ring-sky-200 dark:ring-sky-800/60",
-  "from-amber-500/15 to-amber-500/5 ring-amber-200 dark:ring-amber-800/60",
-  "from-emerald-500/15 to-emerald-500/5 ring-emerald-200 dark:ring-emerald-800/60",
-]
-const metricValueColors = [
-  "text-violet-600 dark:text-violet-400",
-  "text-sky-600 dark:text-sky-400",
-  "text-amber-600 dark:text-amber-400",
-  "text-emerald-600 dark:text-emerald-400",
-]
+function getGreeting(name?: string | null) {
+  const hour = new Date().getHours()
+  const time =
+    hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"
+  return name ? `${time}, ${name}` : time
+}
 
 export function HomePage({ notebooks }: { notebooks: Notebook[] }) {
+  const { user } = useUser()
   const totalSources = notebooks.reduce((s, n) => s + n.sourceCount, 0)
+  const totalMessages = notebooks.reduce((s, n) => s + n.messageCount, 0)
   const featured = notebooks[0]
+  const firstName = user?.firstName ?? null
 
   return (
     <>
       <PageHeader
-        title="Good morning, Peter 👋"
-        description={`${notebooks.length} notebooks · ${totalSources} sources indexed`}
+        title={getGreeting(firstName)}
+        description={`${notebooks.length} notebooks · ${totalSources} sources · ${totalMessages} messages`}
         actions={
           <CreateNotebookDialog
             trigger={
@@ -87,189 +75,160 @@ export function HomePage({ notebooks }: { notebooks: Notebook[] }) {
       />
 
       <div className="mx-auto max-w-6xl space-y-8 px-6 py-8 lg:px-8">
-
-        {/* ── Hero banner ── */}
         {featured ? (
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/90 to-primary p-7 text-primary-foreground shadow-xl shadow-primary/20 dark:shadow-primary/10 lg:p-8">
-            <div className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-white/10 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-10 left-20 size-40 rounded-full bg-black/10 blur-2xl" />
-
-            <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-2">
-                <div className="flex items-center gap-1.5">
-                  <Zap className="size-3.5 opacity-80" />
-                  <span className="text-[11px] font-semibold uppercase tracking-widest opacity-75">
-                    Continue where you left off
-                  </span>
-                </div>
-                <h2 className="text-2xl font-bold tracking-tight">
+          <Card>
+            <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Continue where you left off
+                </p>
+                <h2 className="text-lg font-semibold tracking-tight">
                   {featured.title}
                 </h2>
-                <p className="max-w-sm text-sm opacity-75">
-                  {featured.sourceCount} sources loaded · Last active{" "}
+                <p className="text-sm text-muted-foreground">
+                  {featured.sourceCount} sources · Last active{" "}
                   {formatRelativeTime(featured.updatedAt)}
                 </p>
               </div>
-              <Button
-                asChild
-                variant="secondary"
-                size="lg"
-                className="gap-2 bg-white/15 text-primary-foreground hover:bg-white/25 dark:bg-white/10 dark:hover:bg-white/20"
-              >
+              <Button asChild variant="outline" className="shrink-0 gap-2">
                 <Link href={`/notebook/${featured.id}`}>
                   <BookOpen className="size-4" />
                   Open notebook
                 </Link>
               </Button>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         ) : (
-          <div className="relative overflow-hidden rounded-2xl border border-dashed border-border/80 bg-muted/20 p-7 lg:p-8">
-            <div className="space-y-1">
-              <h2 className="text-xl font-semibold tracking-tight">
+          <Card className="border-dashed">
+            <CardContent className="p-6">
+              <h2 className="text-lg font-semibold tracking-tight">
                 Welcome to DocuNest
               </h2>
-              <p className="max-w-md text-sm text-muted-foreground">
-                Upload documents, chat with AI, and generate study materials in
-                one workspace. Use <span className="font-medium text-foreground">New notebook</span> above to get started.
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                Create a notebook to upload documents, chat with AI, and generate
+                study materials. Use <strong>New notebook</strong> above to get
+                started.
               </p>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
 
-        {/* ── Stat cards ── */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {mockUsageMetrics.map((metric, i) => {
-            const Icon = metricIcons[i]
-            return (
-              <Card
-                key={metric.label}
-                className={cn(
-                  "relative overflow-hidden border-0 bg-gradient-to-br ring-1",
-                  metricColors[i]
-                )}
-              >
-                <CardHeader className="pb-1 pt-5">
-                  <div className="flex items-center justify-between">
-                    <CardDescription className="text-xs font-medium uppercase tracking-wide text-current opacity-65">
-                      {metric.label}
-                    </CardDescription>
-                    <div className="flex size-7 items-center justify-center rounded-lg bg-white/60 dark:bg-black/20">
-                      <Icon className={cn("size-3.5", metricValueColors[i])} />
-                    </div>
-                  </div>
-                  <CardTitle className={cn("mt-1 text-3xl font-bold tabular-nums", metricValueColors[i])}>
-                    {metric.value}
-                    {metric.unit && (
-                      <span className="text-xl font-medium opacity-60">{metric.unit}</span>
-                    )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pb-5">
-                  <p className="text-xs font-medium opacity-70">
-                    +{metric.change}% this week
-                  </p>
-                </CardContent>
-              </Card>
-            )
-          })}
+          {mockUsageMetrics.map((metric) => (
+            <Card key={metric.label}>
+              <CardHeader className="pb-2">
+                <CardDescription>{metric.label}</CardDescription>
+                <CardTitle className="text-2xl font-semibold tabular-nums">
+                  {metric.value}
+                  {metric.unit}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <p className="text-xs text-muted-foreground">
+                  +{metric.change}% vs last week
+                </p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
-        {/* ── Notebooks + Activity ── */}
         <div className="grid gap-6 lg:grid-cols-5">
-
-          {/* Notebooks */}
           <div className="space-y-4 lg:col-span-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold">Your notebooks</h2>
+              <h2 className="text-sm font-medium">Your notebooks</h2>
               <Link
                 href="/app/library"
-                className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
               >
-                View all <ArrowRight className="size-3" />
+                View all
+                <ArrowRight className="size-3" />
               </Link>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
               {notebooks.length === 0 ? (
-                <Card className="col-span-full border border-dashed border-border/80 bg-muted/10">
-                  <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-                    <BookOpen className="size-8 text-muted-foreground/50" />
+                <Card className="col-span-full border-dashed">
+                  <CardContent className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+                    <BookOpen className="size-6 text-muted-foreground" />
                     <p className="text-sm text-muted-foreground">
-                      No notebooks yet. Use New notebook above to create your first one.
+                      No notebooks yet. Create one to get started.
                     </p>
                   </CardContent>
                 </Card>
               ) : (
                 notebooks.map((notebook) => (
-                <Link key={notebook.id} href={`/notebook/${notebook.id}`}>
-                  <Card className="group h-full overflow-hidden border border-border/50 bg-card shadow-sm transition-all duration-200 hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5">
-                    {/* colour strip */}
-                    <div
-                      className={cn(
-                        "h-1.5 w-full bg-gradient-to-r",
-                        notebook.color.replace("/20", "/70").replace("/10", "/50")
-                      )}
-                    />
-                    <CardHeader className="pb-2 pt-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <CardTitle className="text-[15px] font-semibold leading-snug transition-colors group-hover:text-primary">
-                          {notebook.title}
-                        </CardTitle>
-                        <BookOpen className="size-3.5 shrink-0 text-muted-foreground/0 transition-all group-hover:text-primary/60 group-hover:opacity-100" />
-                      </div>
-                      <CardDescription className="line-clamp-2 text-[13px]">
-                        {notebook.description}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3 pb-4">
-                      <div className="flex flex-wrap gap-1">
-                        {notebook.tags?.map((tag) => (
-                          <Badge key={tag} variant="secondary" className="px-2 py-0 text-[10px] font-medium">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                        <span>{notebook.sourceCount} sources</span>
-                        <span>{notebook.messageCount} messages</span>
-                      </div>
-                      <Progress
-                        value={(notebook.messageCount / 70) * 100}
-                        className="h-1 bg-muted/60"
-                      />
-                    </CardContent>
-                  </Card>
-                </Link>
+                  <Link key={notebook.id} href={`/notebook/${notebook.id}`}>
+                    <Card className="h-full transition-colors hover:bg-accent/40">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start gap-2.5">
+                          <span
+                            className={cn(
+                              "mt-1.5 size-2 shrink-0 rounded-full",
+                              getNotebookDotClass(notebook.color)
+                            )}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <CardTitle className="text-sm font-medium leading-snug">
+                              {notebook.title}
+                            </CardTitle>
+                            {notebook.description && (
+                              <CardDescription className="mt-1 line-clamp-2 text-xs">
+                                {notebook.description}
+                              </CardDescription>
+                            )}
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-2 pb-4">
+                        {notebook.tags && notebook.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {notebook.tags.map((tag) => (
+                              <Badge
+                                key={tag}
+                                variant="secondary"
+                                className="px-1.5 py-0 text-[10px] font-normal"
+                              >
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          {notebook.sourceCount} sources · {notebook.messageCount}{" "}
+                          messages
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </Link>
                 ))
               )}
             </div>
           </div>
 
-          {/* Activity */}
           <div className="space-y-4 lg:col-span-2">
-            <h2 className="text-base font-semibold">Recent activity</h2>
+            <h2 className="text-sm font-medium">Recent activity</h2>
 
-            <Card className="border border-border/50 shadow-sm">
-              <ul className="divide-y divide-border/50">
+            <Card>
+              <ul className="divide-y">
                 {mockActivity.map((item) => {
                   const Icon = activityIcons[item.type]
-                  const color = activityColors[item.type]
                   return (
                     <li
                       key={item.id}
-                      className="flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-accent/40"
+                      className="flex items-start gap-3 px-4 py-3"
                     >
-                      <div className={cn("mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg", color)}>
-                        <Icon className="size-3.5" />
+                      <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border bg-muted/50">
+                        <Icon className="size-3.5 text-muted-foreground" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-medium leading-snug">{item.title}</p>
-                        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                        <p className="truncate text-sm leading-snug">
+                          {item.title}
+                        </p>
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
                           {item.notebookTitle}
                         </p>
                       </div>
-                      <span className="flex shrink-0 items-center gap-1 pt-0.5 text-[10px] text-muted-foreground">
+                      <span className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
                         <Clock className="size-3" />
                         {formatRelativeTime(item.timestamp)}
                       </span>
@@ -278,30 +237,6 @@ export function HomePage({ notebooks }: { notebooks: Notebook[] }) {
                 })}
               </ul>
             </Card>
-
-            {featured && (
-              <Card className="border border-border/50 bg-gradient-to-br from-primary/6 to-transparent shadow-sm">
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-[15px]">
-                    <div className="flex size-7 items-center justify-center rounded-lg bg-primary/12">
-                      <Sparkles className="size-3.5 text-primary" />
-                    </div>
-                    Quick start
-                  </CardTitle>
-                  <CardDescription className="text-[13px]">
-                    Jump back into your most active notebook
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button asChild className="w-full gap-2" size="sm">
-                    <Link href={`/notebook/${featured.id}`}>
-                      <BookOpen className="size-4" />
-                      Continue researching
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
           </div>
         </div>
       </div>
