@@ -47,6 +47,7 @@ export function mapSourceDocument(row: SourceRow): SourceDocument {
     fileUrl: row.fileUrl ?? undefined,
     mimeType: row.mimeType ?? undefined,
     originalName: row.originalName ?? undefined,
+    fileSize: row.fileSize ?? undefined,
   }
 }
 

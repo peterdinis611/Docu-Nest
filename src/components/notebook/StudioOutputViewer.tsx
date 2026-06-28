@@ -1,5 +1,9 @@
 import { ArrowLeft, Play } from "lucide-react"
+import { FlashcardsView } from "@/components/notebook/studio/FlashcardsView"
+import { MarkdownStudioView } from "@/components/notebook/studio/MarkdownStudioView"
+import { TimelineView } from "@/components/notebook/studio/TimelineView"
 import { Button } from "@/components/ui/button"
+import { parseStudioContent } from "@/lib/studio/content"
 import type { StudioOutput } from "@/types"
 
 interface StudioOutputViewerProps {
@@ -9,6 +13,7 @@ interface StudioOutputViewerProps {
 
 export function StudioOutputViewer({ output, onBack }: StudioOutputViewerProps) {
   const isAudio = output.type === "audio-overview"
+  const parsed = parseStudioContent(output.content, output.type)
 
   return (
     <div className="flex flex-col px-3 pb-4">
@@ -44,11 +49,9 @@ export function StudioOutputViewer({ output, onBack }: StudioOutputViewerProps) 
           </div>
         )}
 
-        <div className="rounded-xl border bg-card p-4">
-          <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground/90">
-            {output.content}
-          </pre>
-        </div>
+        {parsed.format === "timeline" && <TimelineView events={parsed.events} />}
+        {parsed.format === "flashcards" && <FlashcardsView cards={parsed.cards} />}
+        {parsed.format === "markdown" && <MarkdownStudioView content={parsed.body} />}
       </div>
     </div>
   )

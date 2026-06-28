@@ -15,12 +15,14 @@ const templateColors: Record<StudioOutputType, string> = {
 
 interface StudioGridProps {
   generatingType: StudioOutputType | null
+  disabled?: boolean
   onGenerate: (type: StudioOutputType) => void
   iconMap: Record<string, ComponentType<{ className?: string }>>
 }
 
 export function StudioGrid({
   generatingType,
+  disabled = false,
   onGenerate,
   iconMap,
 }: StudioGridProps) {
@@ -30,12 +32,13 @@ export function StudioGrid({
         const Icon = iconMap[template.icon]
         const isGenerating = generatingType === template.type
         const colorClass = templateColors[template.type]
+        const isDisabled = disabled || generatingType !== null
 
         return (
           <button
             key={template.type}
             type="button"
-            disabled={generatingType !== null}
+            disabled={isDisabled}
             onClick={() => onGenerate(template.type)}
             className={cn(
               "flex flex-col items-start rounded-xl border border-border/60 bg-background p-3.5 text-left transition-all",

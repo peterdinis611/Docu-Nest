@@ -97,6 +97,7 @@ export interface SourceDocument {
   fileUrl?: string
   mimeType?: string
   originalName?: string
+  fileSize?: number
 }
 
 export interface Citation {

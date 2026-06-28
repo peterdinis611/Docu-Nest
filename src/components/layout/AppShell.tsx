@@ -48,10 +48,13 @@ export function AppShell({ notebook }: AppShellProps) {
           draft={notebook.draft}
           isResponding={notebook.isResponding}
           selectedDocumentId={notebook.selectedDocumentId}
+          activeMainStudioOutput={notebook.activeMainStudioOutput}
           onDraftChange={notebook.setDraft}
           onSend={notebook.sendMessage}
           onAskSuggested={notebook.askSuggested}
           onClosePreview={() => notebook.selectDocument(null)}
+          onCloseMainStudio={() => notebook.selectStudioOutput(null)}
+          onSelectDocument={notebook.selectDocument}
         />
 
         <div
@@ -65,6 +68,7 @@ export function AppShell({ notebook }: AppShellProps) {
             activeStudioOutput={notebook.activeStudioOutput}
             savedNotes={notebook.savedNotes}
             generatingStudioType={notebook.generatingStudioType}
+            enabledSourceCount={notebook.enabledCount}
             onGenerate={notebook.generateStudio}
             onSelectOutput={notebook.selectStudioOutput}
           />

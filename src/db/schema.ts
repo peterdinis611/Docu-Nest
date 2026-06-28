@@ -33,6 +33,7 @@ export const sources = sqliteTable("sources", {
   fileUrl: text("file_url"),
   mimeType: text("mime_type"),
   originalName: text("original_name"),
+  fileSize: integer("file_size"),
   enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
   uploadedAt: text("uploaded_at")
     .notNull()

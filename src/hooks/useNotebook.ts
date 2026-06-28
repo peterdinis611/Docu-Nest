@@ -1,5 +1,9 @@
-import { useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { useMachine } from "@xstate/react"
+import { toast } from "sonner"
+import { generateStudioOutputAction } from "@/actions/studio"
+import { createStudioOutput } from "@/data/mock"
+import { isMainWorkspaceStudioOutput } from "@/lib/studio/workspace"
 import { notebookMachine } from "@/machines/notebookMachine"
 import type { NotebookPageData, SourceDocument, StudioOutputType } from "@/types"
 
@@ -38,7 +42,50 @@ export function useNotebook(serverData?: NotebookPageData) {
     (o) => o.id === state.context.activeStudioOutputId
   )
 
+  const activeMainStudioOutput = isMainWorkspaceStudioOutput(activeStudioOutput)
+    ? activeStudioOutput
+    : undefined
+
   const enabledCount = state.context.documents.filter((d) => d.enabled).length
+
+  const generateStudio = useCallback(
+    async (outputType: StudioOutputType) => {
+      send({ type: "GENERATE_STUDIO", outputType })
+
+      try {
+        if (serverData?.notebook.id) {
+          const result = await generateStudioOutputAction({
+            notebookId: serverData.notebook.id,
+            outputType,
+          })
+
+          if (result?.serverError || !result?.data?.output) {
+            throw new Error("Generation failed")
+          }
+
+          send({ type: "STUDIO_OUTPUT_READY", output: result.data.output })
+          return
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 800))
+        const output = createStudioOutput(
+          outputType,
+          state.context.documents,
+          activeNotebook?.title
+        )
+        send({ type: "STUDIO_OUTPUT_READY", output })
+      } catch {
+        send({ type: "STUDIO_GENERATION_FAILED" })
+        toast.error("Could not generate studio output")
+      }
+    },
+    [
+      activeNotebook?.title,
+      send,
+      serverData?.notebook.id,
+      state.context.documents,
+    ]
+  )
 
   return {
     notebooks: state.context.notebooks,
@@ -48,6 +95,7 @@ export function useNotebook(serverData?: NotebookPageData) {
     savedNotes: state.context.savedNotes,
     studioOutputs: state.context.studioOutputs,
     activeStudioOutput,
+    activeMainStudioOutput,
     selectedDocumentId: state.context.selectedDocumentId,
     suggestedQuestions: state.context.suggestedQuestions,
     sourceGuide: state.context.sourceGuide,
@@ -70,8 +118,7 @@ export function useNotebook(serverData?: NotebookPageData) {
     askSuggested: (question: string) =>
       send({ type: "ASK_SUGGESTED", question }),
     clearChat: () => send({ type: "CLEAR_CHAT" }),
-    generateStudio: (outputType: StudioOutputType) =>
-      send({ type: "GENERATE_STUDIO", outputType }),
+    generateStudio,
     selectStudioOutput: (outputId: string | null) =>
       send({ type: "SELECT_STUDIO_OUTPUT", outputId }),
     toggleSourcesPanel: () => send({ type: "TOGGLE_SOURCES_PANEL" }),

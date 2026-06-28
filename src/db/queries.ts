@@ -51,10 +51,11 @@ export function createSourceForNotebook(
     title: string
     type: "pdf" | "article" | "note" | "webpage"
     description?: string
-    fileKey: string
+    uploadthingFileId: string
     fileUrl: string
     mimeType?: string
     originalName: string
+    fileSize?: number
   }
 ) {
   const notebook = db
@@ -67,6 +68,21 @@ export function createSourceForNotebook(
     throw new Error("Notebook not found")
   }
 
+  const existing = db
+    .select()
+    .from(sources)
+    .where(
+      and(
+        eq(sources.notebookId, input.notebookId),
+        eq(sources.fileKey, input.uploadthingFileId)
+      )
+    )
+    .get()
+
+  if (existing) {
+    return existing
+  }
+
   const now = new Date().toISOString()
 
   db.insert(sources)
@@ -76,10 +92,11 @@ export function createSourceForNotebook(
       title: input.title,
       type: input.type,
       description: input.description ?? "Uploaded file — indexing pending.",
-      fileKey: input.fileKey,
+      fileKey: input.uploadthingFileId,
       fileUrl: input.fileUrl,
       mimeType: input.mimeType ?? null,
       originalName: input.originalName,
+      fileSize: input.fileSize ?? null,
       enabled: true,
       uploadedAt: now,
     })
@@ -186,4 +203,55 @@ export function listStudioOutputsForNotebook(notebookId: string) {
     .where(eq(studioOutputs.notebookId, notebookId))
     .orderBy(desc(studioOutputs.createdAt))
     .all()
+}
+
+export function createStudioOutputForNotebook(
+  userId: string,
+  input: {
+    id: string
+    notebookId: string
+    type:
+      | "audio-overview"
+      | "study-guide"
+      | "briefing-doc"
+      | "faq"
+      | "timeline"
+      | "mind-map"
+      | "flashcards"
+    title: string
+    content: string
+    duration?: string
+  }
+) {
+  const notebook = db
+    .select({ id: notebooks.id, title: notebooks.title })
+    .from(notebooks)
+    .where(and(eq(notebooks.id, input.notebookId), eq(notebooks.userId, userId)))
+    .get()
+
+  if (!notebook) {
+    throw new Error("Notebook not found")
+  }
+
+  const now = new Date().toISOString()
+
+  db.insert(studioOutputs)
+    .values({
+      id: input.id,
+      notebookId: input.notebookId,
+      type: input.type,
+      title: input.title,
+      content: input.content,
+      status: "ready",
+      duration: input.duration ?? null,
+      createdAt: now,
+    })
+    .run()
+
+  db.update(notebooks)
+    .set({ updatedAt: now })
+    .where(eq(notebooks.id, input.notebookId))
+    .run()
+
+  return db.select().from(studioOutputs).where(eq(studioOutputs.id, input.id)).get()!
 }

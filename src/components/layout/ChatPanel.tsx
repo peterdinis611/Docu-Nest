@@ -2,10 +2,11 @@ import { MessageSquare, Sparkles } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ChatInput } from "@/components/notebook/ChatInput"
 import { DocumentPreview } from "@/components/notebook/DocumentPreview"
+import { StudioWorkspacePreview } from "@/components/notebook/StudioWorkspacePreview"
 import { MessageList } from "@/components/notebook/MessageList"
 import { SourceGuide } from "@/components/notebook/SourceGuide"
 import { SuggestedChips } from "@/components/notebook/SuggestedChips"
-import type { ChatMessage, SourceDocument } from "@/types"
+import type { ChatMessage, SourceDocument, StudioOutput } from "@/types"
 
 interface ChatPanelProps {
   documents: SourceDocument[]
@@ -15,10 +16,13 @@ interface ChatPanelProps {
   draft: string
   isResponding: boolean
   selectedDocumentId: string | null
+  activeMainStudioOutput?: StudioOutput
   onDraftChange: (draft: string) => void
   onSend: () => void
   onAskSuggested: (question: string) => void
   onClosePreview: () => void
+  onCloseMainStudio: () => void
+  onSelectDocument: (id: string | null) => void
 }
 
 export function ChatPanel({
@@ -29,10 +33,13 @@ export function ChatPanel({
   draft,
   isResponding,
   selectedDocumentId,
+  activeMainStudioOutput,
   onDraftChange,
   onSend,
   onAskSuggested,
   onClosePreview,
+  onCloseMainStudio,
+  onSelectDocument,
 }: ChatPanelProps) {
   const previewDoc = documents.find((d) => d.id === selectedDocumentId)
   const showWelcome = messages.length === 0
@@ -41,7 +48,17 @@ export function ChatPanel({
   return (
     <main className="relative flex min-w-0 flex-1 flex-col bg-background">
       {previewDoc ? (
-        <DocumentPreview document={previewDoc} onClose={onClosePreview} />
+        <DocumentPreview
+          document={previewDoc}
+          documents={documents}
+          onClose={onClosePreview}
+          onSelectDocument={(id) => onSelectDocument(id)}
+        />
+      ) : activeMainStudioOutput ? (
+        <StudioWorkspacePreview
+          output={activeMainStudioOutput}
+          onClose={onCloseMainStudio}
+        />
       ) : (
         <>
           <ScrollArea className="relative flex-1">

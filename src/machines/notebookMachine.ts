@@ -1,6 +1,5 @@
 import { assign, setup } from "xstate"
 import {
-  createStudioOutput,
   getMockResponse,
   mockDocuments,
   mockNotebooks,
@@ -8,6 +7,7 @@ import {
   mockSourceGuide,
   mockSuggestedQuestions,
 } from "@/data/mock"
+import { opensInMainWorkspace } from "@/lib/studio/workspace"
 import type {
   ChatMessage,
   Notebook,
@@ -55,6 +55,8 @@ export type NotebookEvent =
   | { type: "ASK_SUGGESTED"; question: string }
   | { type: "CLEAR_CHAT" }
   | { type: "GENERATE_STUDIO"; outputType: StudioOutputType }
+  | { type: "STUDIO_OUTPUT_READY"; output: StudioOutput }
+  | { type: "STUDIO_GENERATION_FAILED" }
   | { type: "SELECT_STUDIO_OUTPUT"; outputId: string | null }
   | { type: "TOGGLE_SOURCES_PANEL" }
   | { type: "TOGGLE_STUDIO_PANEL" }
@@ -66,7 +68,6 @@ export const notebookMachine = setup({
   },
   delays: {
     responseDelay: 700,
-    studioDelay: 1200,
   },
   actions: {
     load: assign({
@@ -140,6 +141,19 @@ export const notebookMachine = setup({
     selectDocument: assign({
       selectedDocumentId: ({ event }) =>
         event.type === "SELECT_DOCUMENT" ? event.documentId : null,
+      activeStudioOutputId: ({ context, event }) => {
+        if (event.type !== "SELECT_DOCUMENT" || !event.documentId) {
+          return context.activeStudioOutputId
+        }
+
+        const active = context.studioOutputs.find(
+          (output) => output.id === context.activeStudioOutputId
+        )
+
+        return active && opensInMainWorkspace(active.type)
+          ? null
+          : context.activeStudioOutputId
+      },
     }),
     setDraft: assign({
       draft: ({ event }) =>
@@ -199,24 +213,40 @@ export const notebookMachine = setup({
       generatingStudioType: ({ event }) =>
         event.type === "GENERATE_STUDIO" ? event.outputType : null,
     }),
-    finishStudioGeneration: assign(({ context }) => {
-      if (!context.generatingStudioType) {
-        return {
-          generatingStudioType: null,
-        }
-      }
-
-      const output = createStudioOutput(context.generatingStudioType)
-
-      return {
-        studioOutputs: [output, ...context.studioOutputs],
-        activeStudioOutputId: output.id,
-        generatingStudioType: null,
-      }
+    addStudioOutput: assign({
+      studioOutputs: ({ context, event }) => {
+        if (event.type !== "STUDIO_OUTPUT_READY") return context.studioOutputs
+        return [event.output, ...context.studioOutputs]
+      },
+      activeStudioOutputId: ({ event }) =>
+        event.type === "STUDIO_OUTPUT_READY" ? event.output.id : null,
+      generatingStudioType: () => null,
+      selectedDocumentId: ({ context, event }) => {
+        if (event.type !== "STUDIO_OUTPUT_READY") return context.selectedDocumentId
+        return opensInMainWorkspace(event.output.type)
+          ? null
+          : context.selectedDocumentId
+      },
+    }),
+    clearStudioGeneration: assign({
+      generatingStudioType: () => null,
     }),
     selectStudioOutput: assign({
       activeStudioOutputId: ({ event }) =>
         event.type === "SELECT_STUDIO_OUTPUT" ? event.outputId : null,
+      selectedDocumentId: ({ context, event }) => {
+        if (event.type !== "SELECT_STUDIO_OUTPUT" || !event.outputId) {
+          return context.selectedDocumentId
+        }
+
+        const output = context.studioOutputs.find(
+          (item) => item.id === event.outputId
+        )
+
+        return output && opensInMainWorkspace(output.type)
+          ? null
+          : context.selectedDocumentId
+      },
     }),
     toggleSourcesPanel: assign({
       sourcesPanelOpen: ({ context }) => !context.sourcesPanelOpen,
@@ -274,8 +304,13 @@ export const notebookMachine = setup({
           actions: "askSuggested",
         },
         GENERATE_STUDIO: {
-          target: "generatingStudio",
           actions: "startStudioGeneration",
+        },
+        STUDIO_OUTPUT_READY: {
+          actions: "addStudioOutput",
+        },
+        STUDIO_GENERATION_FAILED: {
+          actions: "clearStudioGeneration",
         },
       },
     },
@@ -284,14 +319,6 @@ export const notebookMachine = setup({
         responseDelay: {
           target: "ready",
           actions: "appendAssistantMessage",
-        },
-      },
-    },
-    generatingStudio: {
-      after: {
-        studioDelay: {
-          target: "ready",
-          actions: "finishStudioGeneration",
         },
       },
     },

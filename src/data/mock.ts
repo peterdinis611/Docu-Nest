@@ -9,6 +9,7 @@ import type {
   UsageMetric,
   WeeklyActivity,
 } from "@/types"
+import { generateStudioPayload } from "@/lib/studio/generate"
 
 export const mockNotebooks: Notebook[] = [
   {
@@ -219,103 +220,6 @@ export const mockSavedNotes: SavedNote[] = [
   },
 ]
 
-const studioContent: Record<StudioOutputType, { title: string; content: string; duration?: string }> = {
-  "audio-overview": {
-    title: "Audio Overview",
-    duration: "8:42",
-    content: `Host A: Welcome back. Today we're walking through four sources on transformers, RAG, and grounded research assistants.
-
-Host B: Let's start with the big one — "Attention Is All You Need." The core idea is replacing recurrence entirely with self-attention. That means much better parallelization during training.
-
-Host A: The RAG article complements this perfectly. It argues that even powerful models need retrieval when answers must be tied to specific documents.
-
-Host B: And your citation notes make the rules crystal clear — no outside knowledge, always cite, and say when something isn't covered.
-
-Host A: The NotebookLM overview shows how these principles become product features — upload, chat, studio outputs. That's our takeaway.`,
-  },
-  "study-guide": {
-    title: "Study Guide",
-    content: `## Key Concepts
-
-**Self-attention** — Mechanism allowing each position in a sequence to attend to all others in parallel.
-
-**RAG (Retrieval-Augmented Generation)** — Combines retrieval from a document store with generation for grounded answers.
-
-**Source grounding** — Policy that all assistant output must come exclusively from uploaded sources.
-
-## Review Questions
-
-1. Why does the Transformer dispense with recurrence?
-2. What three citation formats appear across your notes?
-3. Name two retrieval strategies recommended in the RAG article.
-4. What should the assistant do when a topic isn't in the sources?`,
-  },
-  "briefing-doc": {
-    title: "Briefing Doc",
-    content: `## Executive Summary
-
-Your notebook assembles technical and product perspectives on building source-grounded research assistants.
-
-The Transformer paper provides the architectural foundation for modern language models. The RAG article operationalizes grounding through retrieval pipelines. Citation notes define editorial policy. The NotebookLM overview maps these ideas to user-facing features.
-
-## Recommendation
-
-Prioritize hybrid retrieval, strict citation formatting, and clear gap acknowledgment in any assistant built on this material.`,
-  },
-  "faq": {
-    title: "FAQ",
-    content: `**Q: Can the assistant use outside knowledge?**
-A: No. All answers must come from uploaded sources only.
-
-**Q: What citation format should be used?**
-A: [Source: document name, section/page] for single sources; [Sources: doc1, doc2] when synthesizing.
-
-**Q: What happens when information is missing?**
-A: The assistant should clearly state the topic isn't covered in the sources.
-
-**Q: What does the Transformer paper contribute?**
-A: A sequence transduction architecture based solely on attention, without recurrence or convolutions.`,
-  },
-  timeline: {
-    title: "Timeline",
-    content: `**2017** — "Attention Is All You Need" introduces the Transformer architecture.
-
-**2020s** — RAG patterns emerge as standard for document-grounded assistants.
-
-**2026** — Product tools like NotebookLM popularize upload → chat → studio workflows.
-
-**Current notebook** — Four sources loaded covering architecture, retrieval, citations, and product design.`,
-  },
-  "mind-map": {
-    title: "Mind Map",
-    content: `Center: **Source-Grounded Research Assistant**
-
-Branches:
-├── Architecture (Transformer, self-attention, parallelization)
-├── Retrieval (chunking, hybrid search, overlap)
-├── Policy (citations, no outside knowledge, gap acknowledgment)
-└── UX (upload sources, Q&A chat, studio outputs, saved notes)`,
-  },
-  flashcards: {
-    title: "Flashcards",
-    content: `**Card 1**
-Q: What mechanism replaces recurrence in the Transformer?
-A: Self-attention
-
-**Card 2**
-Q: What does RAG stand for?
-A: Retrieval-Augmented Generation
-
-**Card 3**
-Q: Single-source citation format?
-A: [Source: document name, section/page]
-
-**Card 4**
-Q: What to say when sources lack an answer?
-A: "This isn't covered in your sources."`,
-  },
-}
-
 const mockResponses: Record<string, string> = {
   default:
     "Based on your selected sources, answers are grounded exclusively in uploaded documents. When information is missing, the assistant states that clearly. Citations follow [Source: document name, section/page].",
@@ -350,15 +254,19 @@ export function getMockResponse(question: string): ChatMessage {
   }
 }
 
-export function createStudioOutput(type: StudioOutputType): StudioOutput {
-  const template = studioContent[type]
+export function createStudioOutput(
+  type: StudioOutputType,
+  sources: SourceDocument[] = mockDocuments,
+  notebookTitle = "Notebook"
+): StudioOutput {
+  const payload = generateStudioPayload(type, sources, notebookTitle)
   return {
     id: crypto.randomUUID(),
     type,
-    title: template.title,
-    content: template.content,
+    title: payload.title,
+    content: payload.content,
     status: "ready",
     createdAt: new Date().toISOString(),
-    duration: template.duration,
+    duration: payload.duration,
   }
 }

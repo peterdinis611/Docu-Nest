@@ -3,7 +3,9 @@
 import type { ReactNode } from "react"
 import { useCallback, useRef, useState } from "react"
 import { FileText, Globe, Link2, Loader2, Upload } from "lucide-react"
+import { useAction } from "next-safe-action/hooks"
 import { toast } from "sonner"
+import { createSourceFromUploadAction } from "@/actions/sources"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -46,38 +48,46 @@ export function AddSourceDialog({
   const open = isControlled ? controlledOpen : internalOpen
   const setOpen = onOpenChange ?? setInternalOpen
 
-  const { startUpload, isUploading } = useUploadThing("notebookSourceUploader", {
-    onClientUploadComplete: (files) => {
-      const added = files
-        .map((file) => file.serverData?.source)
-        .filter((source): source is NonNullable<typeof source> => Boolean(source))
-        .map(
-          (source): SourceDocument => ({
-            id: source.id,
-            title: source.title,
-            type: source.type,
-            description: source.description,
-            pageCount: source.pageCount ?? undefined,
-            uploadedAt: source.uploadedAt,
-            enabled: source.enabled,
-            fileKey: source.fileKey ?? undefined,
-            fileUrl: source.fileUrl ?? undefined,
-            mimeType: source.mimeType ?? undefined,
-            originalName: source.originalName ?? undefined,
-          })
+  const { executeAsync: saveUploadedSource, isExecuting: isSaving } = useAction(
+    createSourceFromUploadAction,
+    {
+      onError: ({ error }) => {
+        toast.error(
+          typeof error.serverError === "string"
+            ? error.serverError
+            : "Failed to save uploaded file."
         )
+      },
+    }
+  )
 
-      for (const source of added) {
-        onSourceAdded?.(source)
+  const { startUpload, isUploading } = useUploadThing("notebookSourceUploader", {
+    onClientUploadComplete: async (files) => {
+      const saved = []
+
+      for (const file of files) {
+        const result = await saveUploadedSource({
+          notebookId,
+          uploadthingFileId: file.key,
+          fileUrl: file.url,
+          originalName: file.name,
+          mimeType: file.type || undefined,
+          fileSize: file.size,
+        })
+
+        if (result.data) {
+          saved.push(result.data)
+          onSourceAdded?.(result.data)
+        }
       }
 
-      if (added.length === 1) {
+      if (saved.length === 1) {
         toast.success("Source uploaded", {
-          description: `"${added[0].title}" was added to this notebook.`,
+          description: `"${saved[0].title}" was saved to this notebook.`,
         })
-      } else if (added.length > 1) {
+      } else if (saved.length > 1) {
         toast.success("Sources uploaded", {
-          description: `${added.length} files were added to this notebook.`,
+          description: `${saved.length} files were saved to this notebook.`,
         })
       }
 
@@ -88,14 +98,16 @@ export function AddSourceDialog({
     },
   })
 
+  const isBusy = isUploading || isSaving
+
   const uploadFiles = useCallback(
     (files: FileList | File[]) => {
       const list = Array.from(files)
-      if (list.length === 0 || isUploading) return
+      if (list.length === 0 || isBusy) return
 
       void startUpload(list, { notebookId })
     },
-    [isUploading, notebookId, startUpload]
+    [isBusy, notebookId, startUpload]
   )
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -129,7 +141,7 @@ export function AddSourceDialog({
               key={type}
               type="button"
               onClick={() => setSourceType(type)}
-              disabled={isUploading}
+              disabled={isBusy}
               className={cn(
                 "flex flex-col items-center gap-1.5 rounded-lg border p-3 text-xs font-medium transition-colors",
                 sourceType === type
@@ -164,13 +176,13 @@ export function AddSourceDialog({
                 : "border-border bg-muted/30"
             )}
           >
-            {isUploading ? (
+            {isBusy ? (
               <Loader2 className="mb-3 size-8 animate-spin text-muted-foreground" />
             ) : (
               <Upload className="mb-3 size-8 text-muted-foreground" />
             )}
             <p className="text-sm font-medium">
-              {isUploading ? "Uploading…" : "Drop files here"}
+              {isUploading ? "Uploading…" : isSaving ? "Saving…" : "Drop files here"}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               PDF, DOCX, TXT, MD — up to 32 MB each
@@ -192,10 +204,10 @@ export function AddSourceDialog({
               variant="outline"
               size="sm"
               className="mt-4"
-              disabled={isUploading}
+              disabled={isBusy}
               onClick={() => fileInputRef.current?.click()}
             >
-              {isUploading ? "Uploading…" : "Browse files"}
+              {isBusy ? "Working…" : "Browse files"}
             </Button>
           </div>
         )}
