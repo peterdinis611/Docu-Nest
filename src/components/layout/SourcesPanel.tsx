@@ -6,6 +6,7 @@ import {
   FileText,
   Globe,
   Link2,
+  MessageSquare,
   NotebookPen,
   Plus,
   ScrollText,
@@ -13,6 +14,7 @@ import {
   Upload,
 } from "lucide-react"
 import { AddSourceDialog } from "@/components/dialogs/AddSourceDialog"
+import { SourceActionsMenu } from "@/components/notebook/SourceActionsMenu"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -57,18 +59,26 @@ interface SourcesPanelProps {
   notebookId: string
   documents: SourceDocument[]
   selectedDocumentId: string | null
+  chatDocumentId: string | null
   onToggleDocument: (id: string) => void
   onSelectDocument: (id: string | null) => void
+  onFocusChatDocument: (id: string) => void
   onSourceAdded: (source: SourceDocument) => void
+  onSourceUpdated: (source: SourceDocument) => void
+  onSourceDeleted: (sourceId: string) => void
 }
 
 export function SourcesPanel({
   notebookId,
   documents,
   selectedDocumentId,
+  chatDocumentId,
   onToggleDocument,
   onSelectDocument,
+  onFocusChatDocument,
   onSourceAdded,
+  onSourceUpdated,
+  onSourceDeleted,
 }: SourcesPanelProps) {
   const [query, setQuery] = useState("")
   const enabledCount = documents.filter((d) => d.enabled).length
@@ -133,10 +143,15 @@ export function SourcesPanel({
       </div>
 
       <VirtualizedSourceList
+        notebookId={notebookId}
         sources={filtered}
         selectedDocumentId={selectedDocumentId}
+        chatDocumentId={chatDocumentId}
         onToggleDocument={onToggleDocument}
         onSelectDocument={onSelectDocument}
+        onFocusChatDocument={onFocusChatDocument}
+        onSourceUpdated={onSourceUpdated}
+        onSourceDeleted={onSourceDeleted}
         emptyMessage={
           documents.length === 0
             ? "No sources yet. Upload a file to get started."
@@ -148,18 +163,28 @@ export function SourcesPanel({
 }
 
 interface VirtualizedSourceListProps {
+  notebookId: string
   sources: SourceDocument[]
   selectedDocumentId: string | null
+  chatDocumentId: string | null
   onToggleDocument: (id: string) => void
   onSelectDocument: (id: string | null) => void
+  onFocusChatDocument: (id: string) => void
+  onSourceUpdated: (source: SourceDocument) => void
+  onSourceDeleted: (sourceId: string) => void
   emptyMessage: string
 }
 
 function VirtualizedSourceList({
+  notebookId,
   sources,
   selectedDocumentId,
+  chatDocumentId,
   onToggleDocument,
   onSelectDocument,
+  onFocusChatDocument,
+  onSourceUpdated,
+  onSourceDeleted,
   emptyMessage,
 }: VirtualizedSourceListProps) {
   const parentRef = useRef<HTMLDivElement>(null)
@@ -221,10 +246,15 @@ function VirtualizedSourceList({
               style={{ transform: `translateY(${virtualRow.start}px)` }}
             >
               <SourceListItem
+                notebookId={notebookId}
                 doc={doc}
                 isPreviewing={selectedDocumentId === doc.id}
+                isChatFocused={chatDocumentId === doc.id}
                 onToggleDocument={onToggleDocument}
                 onSelectDocument={onSelectDocument}
+                onFocusChatDocument={onFocusChatDocument}
+                onSourceUpdated={onSourceUpdated}
+                onSourceDeleted={onSourceDeleted}
               />
             </div>
           )
@@ -235,17 +265,27 @@ function VirtualizedSourceList({
 }
 
 interface SourceListItemProps {
+  notebookId: string
   doc: SourceDocument
   isPreviewing: boolean
+  isChatFocused: boolean
   onToggleDocument: (id: string) => void
   onSelectDocument: (id: string | null) => void
+  onFocusChatDocument: (id: string) => void
+  onSourceUpdated: (source: SourceDocument) => void
+  onSourceDeleted: (sourceId: string) => void
 }
 
 function SourceListItem({
+  notebookId,
   doc,
   isPreviewing,
+  isChatFocused,
   onToggleDocument,
   onSelectDocument,
+  onFocusChatDocument,
+  onSourceUpdated,
+  onSourceDeleted,
 }: SourceListItemProps) {
   const config = typeConfig[doc.type]
   const Icon = config.icon
@@ -256,9 +296,11 @@ function SourceListItem({
         "group rounded-xl border p-3 transition-all",
         isPreviewing
           ? "border-primary/40 bg-primary/5 shadow-sm"
-          : doc.enabled
-            ? "border-border/60 bg-background hover:border-primary/25 hover:shadow-sm"
-            : "border-border/40 bg-muted/30 opacity-60"
+          : isChatFocused
+            ? "border-emerald-500/40 bg-emerald-500/5 shadow-sm"
+            : doc.enabled
+              ? "border-border/60 bg-background hover:border-primary/25 hover:shadow-sm"
+              : "border-border/40 bg-muted/30 opacity-60"
       )}
     >
       <div className="flex items-start gap-2.5">
@@ -287,6 +329,9 @@ function SourceListItem({
               </Badge>
             </div>
             {isPreviewing && <Link2 className="size-3 text-primary" />}
+            {isChatFocused && !isPreviewing && (
+              <MessageSquare className="size-3 text-emerald-600 dark:text-emerald-400" />
+            )}
           </div>
           <p className="text-sm font-medium leading-snug">{doc.title}</p>
           <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
@@ -298,6 +343,27 @@ function SourceListItem({
             </p>
           )}
         </button>
+        <Button
+          type="button"
+          variant={isChatFocused ? "secondary" : "ghost"}
+          size="icon"
+          className={cn(
+            "size-8 shrink-0 transition-opacity",
+            isChatFocused
+              ? "opacity-100"
+              : "opacity-0 group-hover:opacity-100"
+          )}
+          aria-label={`Chat with ${doc.title}`}
+          onClick={() => onFocusChatDocument(doc.id)}
+        >
+          <MessageSquare className="size-3.5" />
+        </Button>
+        <SourceActionsMenu
+          notebookId={notebookId}
+          source={doc}
+          onUpdated={onSourceUpdated}
+          onDeleted={onSourceDeleted}
+        />
       </div>
     </div>
   )

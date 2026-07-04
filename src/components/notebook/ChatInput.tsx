@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils"
 interface ChatInputProps {
   draft: string
   isResponding: boolean
+  placeholder?: string
+  trailing?: React.ReactNode
   onDraftChange: (draft: string) => void
   onSend: () => void
 }
@@ -14,6 +16,8 @@ interface ChatInputProps {
 export function ChatInput({
   draft,
   isResponding,
+  placeholder = "Ask about your sources…",
+  trailing,
   onDraftChange,
   onSend,
 }: ChatInputProps) {
@@ -39,7 +43,7 @@ export function ChatInput({
             value={draft}
             onChange={(e) => onDraftChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask about your sources…"
+            placeholder={placeholder}
             disabled={isResponding}
             rows={1}
             className="min-h-[56px] resize-none border-0 bg-transparent px-5 py-4 pr-14 text-sm shadow-none focus-visible:ring-0"
@@ -56,9 +60,12 @@ export function ChatInput({
             <ArrowUp className="size-4" />
           </Button>
         </div>
-        <p className="mt-2.5 text-center text-[11px] text-muted-foreground/80">
-          DocuNest answers only from your sources — verify important details.
-        </p>
+        <div className="mt-2.5 flex items-center justify-between gap-3">
+          <p className="text-[11px] text-muted-foreground/80">
+            DocuNest answers only from your sources — verify important details.
+          </p>
+          {trailing}
+        </div>
       </div>
     </div>
   )

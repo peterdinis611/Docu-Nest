@@ -1,6 +1,8 @@
-import { MessageSquare, Sparkles } from "lucide-react"
+import { MessageSquare, Sparkles, Trash2 } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { ChatFocusBanner } from "@/components/notebook/ChatFocusBanner"
 import { ChatInput } from "@/components/notebook/ChatInput"
+import { Button } from "@/components/ui/button"
 import { DocumentPreview } from "@/components/notebook/DocumentPreview"
 import { StudioWorkspacePreview } from "@/components/notebook/StudioWorkspacePreview"
 import { MessageList } from "@/components/notebook/MessageList"
@@ -16,6 +18,7 @@ interface ChatPanelProps {
   draft: string
   isResponding: boolean
   selectedDocumentId: string | null
+  chatDocument?: SourceDocument
   activeMainStudioOutput?: StudioOutput
   onDraftChange: (draft: string) => void
   onSend: () => void
@@ -23,6 +26,12 @@ interface ChatPanelProps {
   onClosePreview: () => void
   onCloseMainStudio: () => void
   onSelectDocument: (id: string | null) => void
+  onClearChatDocument: () => void
+  onFocusChatDocument?: (id: string) => void
+  onClearChat?: () => void
+  notebookId?: string
+  onSourceUpdated?: (source: SourceDocument) => void
+  onSourceDeleted?: (sourceId: string) => void
 }
 
 export function ChatPanel({
@@ -33,6 +42,7 @@ export function ChatPanel({
   draft,
   isResponding,
   selectedDocumentId,
+  chatDocument,
   activeMainStudioOutput,
   onDraftChange,
   onSend,
@@ -40,6 +50,12 @@ export function ChatPanel({
   onClosePreview,
   onCloseMainStudio,
   onSelectDocument,
+  onClearChatDocument,
+  onFocusChatDocument,
+  onClearChat,
+  notebookId,
+  onSourceUpdated,
+  onSourceDeleted,
 }: ChatPanelProps) {
   const previewDoc = documents.find((d) => d.id === selectedDocumentId)
   const showWelcome = messages.length === 0
@@ -53,6 +69,13 @@ export function ChatPanel({
           documents={documents}
           onClose={onClosePreview}
           onSelectDocument={(id) => onSelectDocument(id)}
+          onFocusChatDocument={onFocusChatDocument}
+          notebookId={notebookId}
+          onSourceUpdated={onSourceUpdated}
+          onSourceDeleted={(sourceId) => {
+            onSourceDeleted?.(sourceId)
+            onClosePreview()
+          }}
         />
       ) : activeMainStudioOutput ? (
         <StudioWorkspacePreview
@@ -61,6 +84,13 @@ export function ChatPanel({
         />
       ) : (
         <>
+          {chatDocument && (
+            <ChatFocusBanner
+              document={chatDocument}
+              onClear={onClearChatDocument}
+            />
+          )}
+
           <ScrollArea className="relative flex-1">
             {showWelcome ? (
               <div className="mx-auto flex w-full max-w-2xl flex-col gap-10 px-6 py-16">
@@ -70,12 +100,14 @@ export function ChatPanel({
                   </div>
                   <div className="space-y-2">
                     <h1 className="text-2xl font-semibold tracking-tight">
-                      Chat with your sources
+                      {chatDocument
+                        ? `Chat with ${chatDocument.title}`
+                        : "Chat with your sources"}
                     </h1>
                     <p className="mx-auto max-w-sm text-sm leading-relaxed text-muted-foreground">
-                      Ask anything — answers are grounded exclusively in your{" "}
-                      {enabledCount} selected document
-                      {enabledCount !== 1 ? "s" : ""}.
+                      {chatDocument
+                        ? "Questions are scoped to this document only. Answers include citations from its content."
+                        : `Ask anything — answers are grounded exclusively in your ${enabledCount} selected document${enabledCount !== 1 ? "s" : ""}.`}
                     </p>
                   </div>
                 </div>
@@ -103,8 +135,28 @@ export function ChatPanel({
           <ChatInput
             draft={draft}
             isResponding={isResponding}
+            placeholder={
+              chatDocument
+                ? `Ask about "${chatDocument.title}"…`
+                : "Ask about your sources…"
+            }
             onDraftChange={onDraftChange}
             onSend={onSend}
+            trailing={
+              messages.length > 0 && onClearChat ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1.5 text-[11px] text-muted-foreground"
+                  onClick={onClearChat}
+                  disabled={isResponding}
+                >
+                  <Trash2 className="size-3" />
+                  Clear chat
+                </Button>
+              ) : null
+            }
           />
         </>
       )}

@@ -148,6 +148,32 @@ export function listSourcesForUser(userId: string) {
     .all()
 }
 
+export function listLibraryDocumentsForUser(userId: string) {
+  return db
+    .select({
+      id: sources.id,
+      title: sources.title,
+      type: sources.type,
+      description: sources.description,
+      pageCount: sources.pageCount,
+      uploadedAt: sources.uploadedAt,
+      enabled: sources.enabled,
+      fileKey: sources.fileKey,
+      fileUrl: sources.fileUrl,
+      mimeType: sources.mimeType,
+      originalName: sources.originalName,
+      fileSize: sources.fileSize,
+      notebookId: notebooks.id,
+      notebookTitle: notebooks.title,
+      notebookColor: notebooks.color,
+    })
+    .from(sources)
+    .innerJoin(notebooks, eq(sources.notebookId, notebooks.id))
+    .where(eq(notebooks.userId, userId))
+    .orderBy(desc(sources.uploadedAt))
+    .all()
+}
+
 export function getNotebookById(notebookId: string, userId: string) {
   return db.query.notebooks
     .findFirst({
@@ -203,6 +229,235 @@ export function listStudioOutputsForNotebook(notebookId: string) {
     .where(eq(studioOutputs.notebookId, notebookId))
     .orderBy(desc(studioOutputs.createdAt))
     .all()
+}
+
+export function getSourceForNotebook(
+  sourceId: string,
+  notebookId: string,
+  userId: string
+) {
+  return db
+    .select({ source: sources })
+    .from(sources)
+    .innerJoin(notebooks, eq(sources.notebookId, notebooks.id))
+    .where(
+      and(
+        eq(sources.id, sourceId),
+        eq(sources.notebookId, notebookId),
+        eq(notebooks.userId, userId)
+      )
+    )
+    .get()
+}
+
+export function createChatExchangeForNotebook(
+  userId: string,
+  input: {
+    notebookId: string
+    userMessage: { id: string; content: string }
+    assistantMessage: {
+      id: string
+      content: string
+      citations?: Array<{
+        documentId: string
+        documentTitle: string
+        section?: string
+      }>
+    }
+  }
+) {
+  const notebook = db
+    .select({ id: notebooks.id })
+    .from(notebooks)
+    .where(and(eq(notebooks.id, input.notebookId), eq(notebooks.userId, userId)))
+    .get()
+
+  if (!notebook) {
+    throw new Error("Notebook not found")
+  }
+
+  const now = new Date().toISOString()
+
+  db.insert(messages)
+    .values({
+      id: input.userMessage.id,
+      notebookId: input.notebookId,
+      role: "user",
+      content: input.userMessage.content,
+      createdAt: now,
+    })
+    .run()
+
+  db.insert(messages)
+    .values({
+      id: input.assistantMessage.id,
+      notebookId: input.notebookId,
+      role: "assistant",
+      content: input.assistantMessage.content,
+      citations: input.assistantMessage.citations ?? null,
+      createdAt: now,
+    })
+    .run()
+
+  db.update(notebooks)
+    .set({ updatedAt: now })
+    .where(eq(notebooks.id, input.notebookId))
+    .run()
+
+  const userMessage = db
+    .select()
+    .from(messages)
+    .where(eq(messages.id, input.userMessage.id))
+    .get()!
+
+  const assistantMessage = db
+    .select()
+    .from(messages)
+    .where(eq(messages.id, input.assistantMessage.id))
+    .get()!
+
+  return { userMessage, assistantMessage }
+}
+
+export function updateSourceForNotebook(
+  userId: string,
+  input: {
+    notebookId: string
+    sourceId: string
+    title?: string
+    description?: string
+    enabled?: boolean
+  }
+) {
+  const existing = getSourceForNotebook(input.sourceId, input.notebookId, userId)
+
+  if (!existing) {
+    throw new Error("Source not found")
+  }
+
+  const updates: {
+    title?: string
+    description?: string
+    enabled?: boolean
+  } = {}
+
+  if (input.title !== undefined) updates.title = input.title
+  if (input.description !== undefined) updates.description = input.description
+  if (input.enabled !== undefined) updates.enabled = input.enabled
+
+  if (Object.keys(updates).length > 0) {
+    db.update(sources)
+      .set(updates)
+      .where(eq(sources.id, input.sourceId))
+      .run()
+  }
+
+  const now = new Date().toISOString()
+
+  db.update(notebooks)
+    .set({ updatedAt: now })
+    .where(eq(notebooks.id, input.notebookId))
+    .run()
+
+  return db.select().from(sources).where(eq(sources.id, input.sourceId)).get()!
+}
+
+export function deleteSourceForNotebook(
+  userId: string,
+  notebookId: string,
+  sourceId: string
+) {
+  const existing = getSourceForNotebook(sourceId, notebookId, userId)
+
+  if (!existing) {
+    throw new Error("Source not found")
+  }
+
+  db.delete(sources).where(eq(sources.id, sourceId)).run()
+
+  const now = new Date().toISOString()
+
+  db.update(notebooks)
+    .set({ updatedAt: now })
+    .where(eq(notebooks.id, notebookId))
+    .run()
+
+  return { id: sourceId }
+}
+
+export function updateNotebookForUser(
+  userId: string,
+  notebookId: string,
+  input: {
+    title?: string
+    description?: string | null
+  }
+) {
+  const notebook = db
+    .select()
+    .from(notebooks)
+    .where(and(eq(notebooks.id, notebookId), eq(notebooks.userId, userId)))
+    .get()
+
+  if (!notebook) {
+    throw new Error("Notebook not found")
+  }
+
+  const now = new Date().toISOString()
+  const updates: {
+    title?: string
+    description?: string | null
+    updatedAt: string
+  } = { updatedAt: now }
+
+  if (input.title !== undefined) updates.title = input.title
+  if (input.description !== undefined) updates.description = input.description
+
+  db.update(notebooks)
+    .set(updates)
+    .where(eq(notebooks.id, notebookId))
+    .run()
+
+  return db.select().from(notebooks).where(eq(notebooks.id, notebookId)).get()!
+}
+
+export function deleteNotebookForUser(userId: string, notebookId: string) {
+  const notebook = db
+    .select({ id: notebooks.id })
+    .from(notebooks)
+    .where(and(eq(notebooks.id, notebookId), eq(notebooks.userId, userId)))
+    .get()
+
+  if (!notebook) {
+    throw new Error("Notebook not found")
+  }
+
+  db.delete(notebooks).where(eq(notebooks.id, notebookId)).run()
+
+  return { id: notebookId }
+}
+
+export function clearMessagesForNotebook(userId: string, notebookId: string) {
+  const notebook = db
+    .select({ id: notebooks.id })
+    .from(notebooks)
+    .where(and(eq(notebooks.id, notebookId), eq(notebooks.userId, userId)))
+    .get()
+
+  if (!notebook) {
+    throw new Error("Notebook not found")
+  }
+
+  db.delete(messages).where(eq(messages.notebookId, notebookId)).run()
+
+  const now = new Date().toISOString()
+
+  db.update(notebooks)
+    .set({ updatedAt: now })
+    .where(eq(notebooks.id, notebookId))
+    .run()
+
+  return { notebookId }
 }
 
 export function createStudioOutputForNotebook(

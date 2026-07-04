@@ -3,18 +3,20 @@ import "server-only"
 import { cacheLife, cacheTag } from "next/cache"
 import {
   getNotebookById,
+  listLibraryDocumentsForUser,
   listNotebooksForUser,
 } from "@/db/queries"
 import { getAnalyticsForUser } from "@/lib/analytics-service"
 import { cacheTags } from "@/lib/cache-tags"
 import {
   mapChatMessage,
+  mapLibraryDocument,
   mapNotebookSummary,
   mapSavedNote,
   mapSourceDocument,
   mapStudioOutput,
 } from "@/lib/notebook-mappers"
-import type { Notebook, NotebookPageData } from "@/types"
+import type { LibraryDocument, Notebook, NotebookPageData } from "@/types"
 import type { AnalyticsData } from "@/types"
 
 export type SidebarNotebook = {
@@ -57,6 +59,16 @@ export async function getCachedAnalyticsForUser(
   cacheLife("minutes")
 
   return getAnalyticsForUser(userId)
+}
+
+export async function getCachedLibraryDocumentsForUser(
+  userId: string
+): Promise<LibraryDocument[]> {
+  "use cache"
+  cacheTag(cacheTags.userNotebooks(userId))
+  cacheLife("minutes")
+
+  return listLibraryDocumentsForUser(userId).map(mapLibraryDocument)
 }
 
 export async function getCachedNotebookPageData(

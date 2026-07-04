@@ -1,5 +1,6 @@
 import type {
   ChatMessage,
+  LibraryDocument,
   Notebook,
   SavedNote,
   SourceDocument,
@@ -48,6 +49,21 @@ export function mapSourceDocument(row: SourceRow): SourceDocument {
     mimeType: row.mimeType ?? undefined,
     originalName: row.originalName ?? undefined,
     fileSize: row.fileSize ?? undefined,
+  }
+}
+
+export function mapLibraryDocument(
+  row: SourceRow & {
+    notebookId: string
+    notebookTitle: string
+    notebookColor: string
+  }
+): LibraryDocument {
+  return {
+    ...mapSourceDocument(row),
+    notebookId: row.notebookId,
+    notebookTitle: row.notebookTitle,
+    notebookColor: row.notebookColor,
   }
 }
 

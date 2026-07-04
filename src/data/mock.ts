@@ -230,7 +230,35 @@ const mockResponses: Record<string, string> = {
     "Inline citations use [Source: document name, section/page]. Cross-source synthesis uses [Sources: doc1, doc2]. Framing not from sources should be labeled explicitly.\n\n[Source: Research Notes — Citation Formats]",
 }
 
-export function getMockResponse(question: string): ChatMessage {
+export function getMockResponse(
+  question: string,
+  source?: SourceDocument
+): ChatMessage {
+  if (source) {
+    const lower = question.toLowerCase()
+    const titleLower = source.title.toLowerCase()
+
+    let content = `Based on "${source.title}": ${source.description}`
+
+    if (lower.includes("summarize") || lower.includes("main points")) {
+      content = `"${source.title}" focuses on: ${source.description}\n\n[Source: ${source.title}]`
+    } else if (titleLower.includes("transformer") || lower.includes("attention")) {
+      content = mockResponses.transformer
+    } else if (titleLower.includes("rag") || lower.includes("retrieval")) {
+      content = mockResponses.rag
+    }
+
+    return {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      content,
+      citations: [
+        { documentId: source.id, documentTitle: source.title },
+      ],
+      createdAt: new Date().toISOString(),
+    }
+  }
+
   const lower = question.toLowerCase()
   let content = mockResponses.default
 

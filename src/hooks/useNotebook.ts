@@ -1,10 +1,23 @@
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useMemo, useRef } from "react"
 import { useMachine } from "@xstate/react"
 import { toast } from "sonner"
+import { clearChatAction, sendChatMessageAction } from "@/actions/chat"
+import {
+  toggleSourceEnabledAction,
+} from "@/actions/sources"
 import { generateStudioOutputAction } from "@/actions/studio"
-import { createStudioOutput } from "@/data/mock"
+import { getMockResponse, createStudioOutput } from "@/data/mock"
+import { getDocumentSuggestedQuestions } from "@/lib/chat-suggestions"
 import { notebookMachine } from "@/machines/notebookMachine"
-import type { NotebookPageData, SourceDocument, StudioOutputType } from "@/types"
+import type { NotebookPageData, Notebook, SourceDocument, StudioOutputType } from "@/types"
+
+function buildChatHistory(
+  messages: Array<{ role: "user" | "assistant"; content: string }>
+) {
+  return messages
+    .slice(-10)
+    .map((message) => ({ role: message.role, content: message.content }))
+}
 
 export function useNotebook(serverData?: NotebookPageData) {
   const [state, send] = useMachine(notebookMachine)
@@ -43,7 +56,99 @@ export function useNotebook(serverData?: NotebookPageData) {
 
   const activeMainStudioOutput = activeStudioOutput
 
+  const chatDocument = state.context.documents.find(
+    (document) => document.id === state.context.chatDocumentId
+  )
+
+  const suggestedQuestions = useMemo(() => {
+    if (chatDocument) {
+      return getDocumentSuggestedQuestions(chatDocument)
+    }
+
+    return state.context.suggestedQuestions
+  }, [chatDocument, state.context.suggestedQuestions])
+
   const enabledCount = state.context.documents.filter((d) => d.enabled).length
+
+  const dispatchChatResponse = useCallback(
+    async (input: {
+      content: string
+      userMessageId: string
+      historyBeforeSend: typeof state.context.messages
+    }) => {
+      try {
+        if (serverData?.notebook.id) {
+          const result = await sendChatMessageAction({
+            notebookId: serverData.notebook.id,
+            content: input.content,
+            userMessageId: input.userMessageId,
+            documentId: state.context.chatDocumentId ?? undefined,
+            history: buildChatHistory(input.historyBeforeSend),
+          })
+
+          if (result?.serverError || !result?.data?.assistantMessage) {
+            throw new Error("Chat failed")
+          }
+
+          send({
+            type: "MESSAGE_RESPONSE",
+            message: result.data.assistantMessage,
+          })
+          return
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 700))
+        send({
+          type: "MESSAGE_RESPONSE",
+          message: getMockResponse(input.content, chatDocument),
+        })
+      } catch {
+        send({ type: "MESSAGE_FAILED" })
+        toast.error("Could not get a response")
+      }
+    },
+    [chatDocument, send, serverData?.notebook.id, state.context.chatDocumentId]
+  )
+
+  const sendMessage = useCallback(async () => {
+    const content = state.context.draft.trim()
+    if (!content || state.context.isResponding) return
+
+    const userMessageId = crypto.randomUUID()
+    const historyBeforeSend = state.context.messages
+
+    send({ type: "SEND_MESSAGE", userMessageId })
+
+    await dispatchChatResponse({
+      content,
+      userMessageId,
+      historyBeforeSend,
+    })
+  }, [
+    dispatchChatResponse,
+    send,
+    state.context.draft,
+    state.context.isResponding,
+    state.context.messages,
+  ])
+
+  const askSuggested = useCallback(
+    async (question: string) => {
+      if (state.context.isResponding) return
+
+      const userMessageId = crypto.randomUUID()
+      const historyBeforeSend = state.context.messages
+
+      send({ type: "ASK_SUGGESTED", question, userMessageId })
+
+      await dispatchChatResponse({
+        content: question,
+        userMessageId,
+        historyBeforeSend,
+      })
+    },
+    [dispatchChatResponse, send, state.context.isResponding, state.context.messages]
+  )
 
   const generateStudio = useCallback(
     async (outputType: StudioOutputType) => {
@@ -84,6 +189,85 @@ export function useNotebook(serverData?: NotebookPageData) {
     ]
   )
 
+  const focusChatDocument = useCallback(
+    (documentId: string) => {
+      send({ type: "FOCUS_CHAT_DOCUMENT", documentId })
+    },
+    [send]
+  )
+
+  const clearChatDocument = useCallback(() => {
+    send({ type: "CLEAR_CHAT_DOCUMENT" })
+  }, [send])
+
+  const toggleDocument = useCallback(
+    async (documentId: string) => {
+      const doc = state.context.documents.find((item) => item.id === documentId)
+      if (!doc) return
+
+      send({ type: "TOGGLE_DOCUMENT", documentId })
+
+      if (!serverData?.notebook.id) return
+
+      try {
+        const result = await toggleSourceEnabledAction({
+          notebookId: serverData.notebook.id,
+          sourceId: documentId,
+          enabled: !doc.enabled,
+        })
+
+        if (result?.serverError || !result?.data?.source) {
+          throw new Error("Toggle failed")
+        }
+
+        send({ type: "SOURCE_UPDATED", source: result.data.source })
+      } catch {
+        send({ type: "TOGGLE_DOCUMENT", documentId })
+        toast.error("Could not update source status")
+      }
+    },
+    [send, serverData?.notebook.id, state.context.documents]
+  )
+
+  const updateSource = useCallback(
+    (source: SourceDocument) => {
+      send({ type: "SOURCE_UPDATED", source })
+    },
+    [send]
+  )
+
+  const removeSource = useCallback(
+    (sourceId: string) => {
+      send({ type: "SOURCE_REMOVED", sourceId })
+    },
+    [send]
+  )
+
+  const updateNotebook = useCallback(
+    (notebook: Notebook) => {
+      send({ type: "NOTEBOOK_UPDATED", notebook })
+    },
+    [send]
+  )
+
+  const clearChat = useCallback(async () => {
+    send({ type: "CLEAR_CHAT" })
+
+    if (!serverData?.notebook.id) return
+
+    try {
+      const result = await clearChatAction({
+        notebookId: serverData.notebook.id,
+      })
+
+      if (result?.serverError) {
+        throw new Error("Clear failed")
+      }
+    } catch {
+      toast.error("Could not clear chat history")
+    }
+  }, [send, serverData?.notebook.id])
+
   return {
     notebooks: state.context.notebooks,
     activeNotebook,
@@ -94,7 +278,9 @@ export function useNotebook(serverData?: NotebookPageData) {
     activeStudioOutput,
     activeMainStudioOutput,
     selectedDocumentId: state.context.selectedDocumentId,
-    suggestedQuestions: state.context.suggestedQuestions,
+    chatDocumentId: state.context.chatDocumentId,
+    chatDocument,
+    suggestedQuestions,
     sourceGuide: state.context.sourceGuide,
     draft: state.context.draft,
     isResponding: state.context.isResponding,
@@ -106,15 +292,18 @@ export function useNotebook(serverData?: NotebookPageData) {
       send({ type: "SELECT_NOTEBOOK", notebookId }),
     addSource: (source: SourceDocument) =>
       send({ type: "ADD_SOURCE", source }),
-    toggleDocument: (documentId: string) =>
-      send({ type: "TOGGLE_DOCUMENT", documentId }),
+    toggleDocument,
+    updateSource,
+    removeSource,
+    updateNotebook,
     selectDocument: (documentId: string | null) =>
       send({ type: "SELECT_DOCUMENT", documentId }),
+    focusChatDocument,
+    clearChatDocument,
     setDraft: (draft: string) => send({ type: "SET_DRAFT", draft }),
-    sendMessage: () => send({ type: "SEND_MESSAGE" }),
-    askSuggested: (question: string) =>
-      send({ type: "ASK_SUGGESTED", question }),
-    clearChat: () => send({ type: "CLEAR_CHAT" }),
+    sendMessage,
+    askSuggested,
+    clearChat,
     generateStudio,
     selectStudioOutput: (outputId: string | null) =>
       send({ type: "SELECT_STUDIO_OUTPUT", outputId }),

@@ -1,6 +1,5 @@
 import { assign, setup } from "xstate"
 import {
-  getMockResponse,
   mockDocuments,
   mockNotebooks,
   mockSavedNotes,
@@ -25,6 +24,7 @@ export interface NotebookContext {
   studioOutputs: StudioOutput[]
   activeStudioOutputId: string | null
   selectedDocumentId: string | null
+  chatDocumentId: string | null
   suggestedQuestions: string[]
   sourceGuide: string
   draft: string
@@ -46,12 +46,19 @@ export type NotebookEvent =
       studioOutputs: StudioOutput[]
     }
   | { type: "ADD_SOURCE"; source: SourceDocument }
+  | { type: "SOURCE_UPDATED"; source: SourceDocument }
+  | { type: "SOURCE_REMOVED"; sourceId: string }
+  | { type: "NOTEBOOK_UPDATED"; notebook: Notebook }
   | { type: "SELECT_NOTEBOOK"; notebookId: string }
   | { type: "TOGGLE_DOCUMENT"; documentId: string }
   | { type: "SELECT_DOCUMENT"; documentId: string | null }
+  | { type: "FOCUS_CHAT_DOCUMENT"; documentId: string }
+  | { type: "CLEAR_CHAT_DOCUMENT" }
   | { type: "SET_DRAFT"; draft: string }
-  | { type: "SEND_MESSAGE" }
-  | { type: "ASK_SUGGESTED"; question: string }
+  | { type: "SEND_MESSAGE"; userMessageId: string }
+  | { type: "ASK_SUGGESTED"; question: string; userMessageId: string }
+  | { type: "MESSAGE_RESPONSE"; message: ChatMessage }
+  | { type: "MESSAGE_FAILED" }
   | { type: "CLEAR_CHAT" }
   | { type: "GENERATE_STUDIO"; outputType: StudioOutputType }
   | { type: "STUDIO_OUTPUT_READY"; output: StudioOutput }
@@ -64,9 +71,6 @@ export const notebookMachine = setup({
   types: {
     context: {} as NotebookContext,
     events: {} as NotebookEvent,
-  },
-  delays: {
-    responseDelay: 700,
   },
   actions: {
     load: assign({
@@ -99,6 +103,7 @@ export const notebookMachine = setup({
           ? mockSourceGuide
           : "Add sources to this notebook to start chatting with your documents.",
       selectedDocumentId: () => null,
+      chatDocumentId: () => null,
       activeStudioOutputId: () => null,
       draft: () => "",
       isResponding: () => false,
@@ -110,6 +115,7 @@ export const notebookMachine = setup({
       messages: () => [],
       studioOutputs: () => [],
       activeStudioOutputId: () => null,
+      chatDocumentId: () => null,
     }),
     addSource: assign({
       documents: ({ context, event }) => {
@@ -125,6 +131,42 @@ export const notebookMachine = setup({
         if (event.type !== "ADD_SOURCE") return context.suggestedQuestions
         if (context.documents.length > 0) return context.suggestedQuestions
         return mockSuggestedQuestions
+      },
+    }),
+    updateSource: assign({
+      documents: ({ context, event }) => {
+        if (event.type !== "SOURCE_UPDATED") return context.documents
+        return context.documents.map((doc) =>
+          doc.id === event.source.id ? event.source : doc
+        )
+      },
+    }),
+    removeSource: assign({
+      documents: ({ context, event }) => {
+        if (event.type !== "SOURCE_REMOVED") return context.documents
+        return context.documents.filter((doc) => doc.id !== event.sourceId)
+      },
+      selectedDocumentId: ({ context, event }) => {
+        if (event.type !== "SOURCE_REMOVED") return context.selectedDocumentId
+        return context.selectedDocumentId === event.sourceId
+          ? null
+          : context.selectedDocumentId
+      },
+      chatDocumentId: ({ context, event }) => {
+        if (event.type !== "SOURCE_REMOVED") return context.chatDocumentId
+        return context.chatDocumentId === event.sourceId
+          ? null
+          : context.chatDocumentId
+      },
+    }),
+    updateNotebook: assign({
+      notebooks: ({ context, event }) => {
+        if (event.type !== "NOTEBOOK_UPDATED") return context.notebooks
+        return context.notebooks.map((notebook) =>
+          notebook.id === event.notebook.id
+            ? { ...notebook, ...event.notebook }
+            : notebook
+        )
       },
     }),
     toggleDocument: assign({
@@ -147,17 +189,28 @@ export const notebookMachine = setup({
         return null
       },
     }),
+    focusChatDocument: assign({
+      chatDocumentId: ({ event }) =>
+        event.type === "FOCUS_CHAT_DOCUMENT" ? event.documentId : null,
+      selectedDocumentId: () => null,
+      activeStudioOutputId: () => null,
+    }),
+    clearChatDocument: assign({
+      chatDocumentId: () => null,
+    }),
     setDraft: assign({
       draft: ({ event }) =>
         event.type === "SET_DRAFT" ? event.draft : "",
     }),
     appendUserMessage: assign({
-      messages: ({ context }) => {
+      messages: ({ context, event }) => {
+        if (event.type !== "SEND_MESSAGE") return context.messages
+
         const text = context.draft.trim()
         if (!text) return context.messages
 
         const userMessage: ChatMessage = {
-          id: crypto.randomUUID(),
+          id: event.userMessageId,
           role: "user",
           content: text,
           createdAt: new Date().toISOString(),
@@ -173,7 +226,7 @@ export const notebookMachine = setup({
         if (event.type !== "ASK_SUGGESTED") return context.messages
 
         const userMessage: ChatMessage = {
-          id: crypto.randomUUID(),
+          id: event.userMessageId,
           role: "user",
           content: event.question,
           createdAt: new Date().toISOString(),
@@ -183,17 +236,14 @@ export const notebookMachine = setup({
       },
       isResponding: () => true,
     }),
-    appendAssistantMessage: assign({
-      messages: ({ context }) => {
-        const lastUser = [...context.messages]
-          .reverse()
-          .find((m) => m.role === "user")
-
-        if (!lastUser) return context.messages
-
-        const response = getMockResponse(lastUser.content)
-        return [...context.messages, response]
+    addAssistantMessage: assign({
+      messages: ({ context, event }) => {
+        if (event.type !== "MESSAGE_RESPONSE") return context.messages
+        return [...context.messages, event.message]
       },
+      isResponding: () => false,
+    }),
+    failMessage: assign({
       isResponding: () => false,
     }),
     clearChat: assign({
@@ -229,11 +279,7 @@ export const notebookMachine = setup({
           return context.selectedDocumentId
         }
 
-        const output = context.studioOutputs.find(
-          (item) => item.id === event.outputId
-        )
-
-        return event.outputId ? null : context.selectedDocumentId
+        return null
       },
     }),
     toggleSourcesPanel: assign({
@@ -255,6 +301,7 @@ export const notebookMachine = setup({
     studioOutputs: [],
     activeStudioOutputId: null,
     selectedDocumentId: null,
+    chatDocumentId: null,
     suggestedQuestions: [],
     sourceGuide: "",
     draft: "",
@@ -274,22 +321,31 @@ export const notebookMachine = setup({
       on: {
         HYDRATE_FROM_SERVER: { actions: "hydrateFromServer" },
         ADD_SOURCE: { actions: "addSource" },
+        SOURCE_UPDATED: { actions: "updateSource" },
+        SOURCE_REMOVED: { actions: "removeSource" },
+        NOTEBOOK_UPDATED: { actions: "updateNotebook" },
         SELECT_NOTEBOOK: { actions: "selectNotebook" },
         TOGGLE_DOCUMENT: { actions: "toggleDocument" },
         SELECT_DOCUMENT: { actions: "selectDocument" },
+        FOCUS_CHAT_DOCUMENT: { actions: "focusChatDocument" },
+        CLEAR_CHAT_DOCUMENT: { actions: "clearChatDocument" },
         SET_DRAFT: { actions: "setDraft" },
         CLEAR_CHAT: { actions: "clearChat" },
         SELECT_STUDIO_OUTPUT: { actions: "selectStudioOutput" },
         TOGGLE_SOURCES_PANEL: { actions: "toggleSourcesPanel" },
         TOGGLE_STUDIO_PANEL: { actions: "toggleStudioPanel" },
         SEND_MESSAGE: {
-          target: "responding",
           guard: ({ context }) => context.draft.trim().length > 0,
           actions: "appendUserMessage",
         },
         ASK_SUGGESTED: {
-          target: "responding",
           actions: "askSuggested",
+        },
+        MESSAGE_RESPONSE: {
+          actions: "addAssistantMessage",
+        },
+        MESSAGE_FAILED: {
+          actions: "failMessage",
         },
         GENERATE_STUDIO: {
           actions: "startStudioGeneration",
@@ -299,14 +355,6 @@ export const notebookMachine = setup({
         },
         STUDIO_GENERATION_FAILED: {
           actions: "clearStudioGeneration",
-        },
-      },
-    },
-    responding: {
-      after: {
-        responseDelay: {
-          target: "ready",
-          actions: "appendAssistantMessage",
         },
       },
     },

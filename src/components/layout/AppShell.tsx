@@ -21,6 +21,7 @@ export function AppShell({ notebook }: AppShellProps) {
         studioPanelOpen={notebook.studioPanelOpen}
         onToggleSources={notebook.toggleSourcesPanel}
         onToggleStudio={notebook.toggleStudioPanel}
+        onNotebookUpdated={notebook.updateNotebook}
       />
 
       <div className="flex min-h-0 flex-1">
@@ -34,9 +35,13 @@ export function AppShell({ notebook }: AppShellProps) {
             notebookId={notebook.activeNotebook?.id ?? ""}
             documents={notebook.documents}
             selectedDocumentId={notebook.selectedDocumentId}
+            chatDocumentId={notebook.chatDocumentId}
             onToggleDocument={notebook.toggleDocument}
             onSelectDocument={notebook.selectDocument}
+            onFocusChatDocument={notebook.focusChatDocument}
             onSourceAdded={notebook.addSource}
+            onSourceUpdated={notebook.updateSource}
+            onSourceDeleted={notebook.removeSource}
           />
         </div>
 
@@ -48,6 +53,7 @@ export function AppShell({ notebook }: AppShellProps) {
           draft={notebook.draft}
           isResponding={notebook.isResponding}
           selectedDocumentId={notebook.selectedDocumentId}
+          chatDocument={notebook.chatDocument}
           activeMainStudioOutput={notebook.activeMainStudioOutput}
           onDraftChange={notebook.setDraft}
           onSend={notebook.sendMessage}
@@ -55,6 +61,12 @@ export function AppShell({ notebook }: AppShellProps) {
           onClosePreview={() => notebook.selectDocument(null)}
           onCloseMainStudio={() => notebook.selectStudioOutput(null)}
           onSelectDocument={notebook.selectDocument}
+          onClearChatDocument={notebook.clearChatDocument}
+          onFocusChatDocument={notebook.focusChatDocument}
+          onClearChat={notebook.clearChat}
+          notebookId={notebook.activeNotebook?.id}
+          onSourceUpdated={notebook.updateSource}
+          onSourceDeleted={notebook.removeSource}
         />
 
         <div

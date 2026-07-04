@@ -100,6 +100,12 @@ export interface SourceDocument {
   fileSize?: number
 }
 
+export interface LibraryDocument extends SourceDocument {
+  notebookId: string
+  notebookTitle: string
+  notebookColor: string
+}
+
 export interface Citation {
   documentId: string
   documentTitle: string

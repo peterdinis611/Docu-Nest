@@ -6,10 +6,12 @@ import {
   Home,
   PanelLeft,
   PanelRight,
+  Pencil,
   Share2,
   Search,
   Sparkles,
 } from "lucide-react"
+import { EditNotebookDialog } from "@/components/dialogs/EditNotebookDialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -34,6 +36,7 @@ interface TopBarProps {
   studioPanelOpen: boolean
   onToggleSources: () => void
   onToggleStudio: () => void
+  onNotebookUpdated?: (notebook: Notebook) => void
 }
 
 export function TopBar({
@@ -45,6 +48,7 @@ export function TopBar({
   studioPanelOpen,
   onToggleSources,
   onToggleStudio,
+  onNotebookUpdated,
 }: TopBarProps) {
   const { openSearch } = useSearch()
 
@@ -116,6 +120,23 @@ export function TopBar({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {notebook && onNotebookUpdated && (
+          <EditNotebookDialog
+            notebook={notebook}
+            onUpdated={onNotebookUpdated}
+            trigger={
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 text-muted-foreground hover:text-foreground"
+                aria-label="Edit notebook"
+              >
+                <Pencil className="size-3.5" />
+              </Button>
+            }
+          />
+        )}
       </div>
 
       <div className="flex items-center gap-2">

@@ -47,12 +47,56 @@ export function isImageFile(document: SourceDocument) {
   )
 }
 
-export type FilePreviewMode = "pdf" | "text" | "image" | "unsupported" | "none"
+export type FilePreviewMode =
+  | "pdf"
+  | "markdown"
+  | "text"
+  | "image"
+  | "unsupported"
+  | "none"
 
 export function getFilePreviewMode(document: SourceDocument): FilePreviewMode {
   if (!document.fileUrl) return "none"
   if (isPdfFile(document)) return "pdf"
   if (isImageFile(document)) return "image"
+  if (isMarkdownFile(document)) return "markdown"
   if (isTextFile(document)) return "text"
   return "unsupported"
+}
+
+export function getSyntaxLanguage(document: SourceDocument) {
+  const ext = fileName(document).split(".").pop()?.toLowerCase()
+
+  switch (ext) {
+    case "json":
+      return "json"
+    case "js":
+    case "jsx":
+      return "javascript"
+    case "ts":
+    case "tsx":
+      return "typescript"
+    case "html":
+    case "htm":
+      return "html"
+    case "css":
+      return "css"
+    case "py":
+      return "python"
+    case "md":
+      return "markdown"
+    case "yaml":
+    case "yml":
+      return "yaml"
+    case "xml":
+      return "xml"
+    case "sql":
+      return "sql"
+    default:
+      return "text"
+  }
+}
+
+export function hasBuiltInZoom(mode: FilePreviewMode) {
+  return mode === "markdown" || mode === "text"
 }

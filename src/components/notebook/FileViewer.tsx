@@ -9,12 +9,16 @@ import {
   FileText,
   Info,
   Loader2,
+  MessageSquare,
   Minus,
   Plus,
   RotateCcw,
   X,
 } from "lucide-react"
 import { toast } from "sonner"
+import { PreviewContent } from "@/components/notebook/viewers/PreviewContent"
+import { SourceActionsMenu } from "@/components/notebook/SourceActionsMenu"
+import { EditSourceDialog } from "@/components/dialogs/EditSourceDialog"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -22,23 +26,35 @@ import {
   fileName,
   fileTypeLabels,
   getFilePreviewMode,
-  isMarkdownFile,
+  hasBuiltInZoom,
 } from "@/lib/file-preview"
 import { downloadRemoteFile } from "@/lib/download-file"
 import { clamp, roundTo } from "@/lib/math"
-import { cn } from "@/lib/utils"
 import type { SourceDocument } from "@/types"
 
 interface FileViewerProps {
   document: SourceDocument
   documents?: SourceDocument[]
+  notebookId?: string
   onClose: () => void
   onSelectDocument?: (id: string) => void
+  onFocusChatDocument?: (id: string) => void
+  onSourceUpdated?: (source: SourceDocument) => void
+  onSourceDeleted?: (sourceId: string) => void
 }
 
 const ZOOM_MIN = 0.6
 const ZOOM_MAX = 2
 const ZOOM_STEP = 0.1
+
+const previewModeLabels = {
+  pdf: "PDF (EmbedPDF)",
+  markdown: "Markdown",
+  text: "Syntax-highlighted text",
+  image: "Image (zoom & pan)",
+  unsupported: "Not supported",
+  none: "None",
+} as const
 
 function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
@@ -58,18 +74,20 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 export function FileViewer({
   document,
   documents = [],
+  notebookId,
   onClose,
   onSelectDocument,
+  onFocusChatDocument,
+  onSourceUpdated,
+  onSourceDeleted,
 }: FileViewerProps) {
   const [zoom, setZoom] = useState(1)
-  const [textContent, setTextContent] = useState<string | null>(null)
-  const [textError, setTextError] = useState<string | null>(null)
-  const [isLoadingText, setIsLoadingText] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
 
   const mode = getFilePreviewMode(document)
   const fileUrl = document.fileUrl
   const name = fileName(document)
+  const showZoomControls = hasBuiltInZoom(mode)
 
   const navigable = useMemo(
     () => documents.filter((doc) => doc.fileUrl),
@@ -82,38 +100,6 @@ export function FileViewer({
   useEffect(() => {
     setZoom(1)
   }, [document.id])
-
-  useEffect(() => {
-    if (mode !== "text" || !fileUrl) {
-      setTextContent(null)
-      setTextError(null)
-      setIsLoadingText(false)
-      return
-    }
-
-    let cancelled = false
-    setIsLoadingText(true)
-    setTextError(null)
-
-    fetch(fileUrl)
-      .then(async (res) => {
-        if (!res.ok) throw new Error("Could not load file")
-        return res.text()
-      })
-      .then((text) => {
-        if (!cancelled) setTextContent(text)
-      })
-      .catch(() => {
-        if (!cancelled) setTextError("Could not load file content.")
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoadingText(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [document.id, fileUrl, mode])
 
   function changeZoom(delta: number) {
     setZoom((value) => roundTo(clamp(value + delta, ZOOM_MIN, ZOOM_MAX), 1))
@@ -179,7 +165,7 @@ export function FileViewer({
           </div>
         </div>
 
-        {(mode === "pdf" || mode === "image" || mode === "text") && (
+        {showZoomControls && (
           <div className="flex items-center gap-0.5 rounded-md border bg-muted/30 p-0.5">
             <Button
               variant="ghost"
@@ -255,6 +241,18 @@ export function FileViewer({
           </>
         )}
 
+        {onFocusChatDocument && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden h-8 gap-1.5 text-xs sm:inline-flex"
+            onClick={() => onFocusChatDocument(document.id)}
+          >
+            <MessageSquare className="size-3.5" />
+            Ask about file
+          </Button>
+        )}
+
         <Button variant="ghost" size="icon" className="size-8" onClick={onClose}>
           <X className="size-4" />
         </Button>
@@ -277,94 +275,12 @@ export function FileViewer({
         <TabsContent value="preview" className="mt-0 min-h-0 flex-1">
           <ScrollArea className="h-full">
             <div className="min-h-full bg-muted/20 p-4">
-              {mode === "none" && (
-                <EmptyState
-                  title="No file attached"
-                  description="This source has metadata only. Upload a file to preview it here."
-                />
-              )}
-
-              {mode === "pdf" && fileUrl && (
-                <div className="mx-auto flex justify-center">
-                  <div
-                    className="w-full max-w-4xl origin-top transition-transform"
-                    style={{ transform: `scale(${zoom})` }}
-                  >
-                    <div className="overflow-hidden rounded-lg border bg-background shadow-sm">
-                      <iframe
-                        title={document.title}
-                        src={`${fileUrl}#view=FitH`}
-                        className="h-[min(78vh,900px)] w-full"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {mode === "image" && fileUrl && (
-                <div className="flex justify-center">
-                  <img
-                    src={fileUrl}
-                    alt={document.title}
-                    className="max-w-full rounded-lg border bg-background shadow-sm transition-transform"
-                    style={{ transform: `scale(${zoom})`, transformOrigin: "top center" }}
-                  />
-                </div>
-              )}
-
-              {mode === "text" && (
-                <div
-                  className="mx-auto max-w-3xl transition-transform"
-                  style={{ transform: `scale(${zoom})`, transformOrigin: "top center" }}
-                >
-                  {isLoadingText ? (
-                    <LoadingState />
-                  ) : textError ? (
-                    <EmptyState title="Preview unavailable" description={textError} />
-                  ) : (
-                    <article
-                      className={cn(
-                        "rounded-lg border bg-background px-6 py-6 text-sm leading-relaxed shadow-sm",
-                        isMarkdownFile(document)
-                          ? "whitespace-pre-wrap"
-                          : "font-mono whitespace-pre-wrap"
-                      )}
-                    >
-                      {textContent}
-                    </article>
-                  )}
-                </div>
-              )}
-
-              {mode === "unsupported" && fileUrl && (
-                <EmptyState
-                  title="Preview not supported"
-                  description="Open or download the original file."
-                  action={
-                    <div className="flex flex-wrap justify-center gap-2">
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="gap-1.5"
-                        onClick={handleDownload}
-                        disabled={isDownloading}
-                      >
-                        {isDownloading ? (
-                          <Loader2 className="size-3.5 animate-spin" />
-                        ) : (
-                          <Download className="size-3.5" />
-                        )}
-                        Download
-                      </Button>
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={fileUrl} target="_blank" rel="noreferrer">
-                          Open file
-                        </a>
-                      </Button>
-                    </div>
-                  }
-                />
-              )}
+              <PreviewContent
+                document={document}
+                zoom={zoom}
+                onDownload={handleDownload}
+                isDownloading={isDownloading}
+              />
             </div>
           </ScrollArea>
         </TabsContent>
@@ -377,6 +293,7 @@ export function FileViewer({
                 <DetailRow label="Title" value={document.title} />
                 <DetailRow label="File name" value={name} />
                 <DetailRow label="Type" value={fileTypeLabels[document.type]} />
+                <DetailRow label="Preview" value={previewModeLabels[mode]} />
                 {document.mimeType && (
                   <DetailRow label="MIME" value={document.mimeType} />
                 )}
@@ -413,38 +330,35 @@ export function FileViewer({
                   Download file
                 </Button>
               )}
+              {notebookId && onSourceUpdated && (
+                <div className="flex gap-2">
+                  <EditSourceDialog
+                    notebookId={notebookId}
+                    source={document}
+                    onUpdated={onSourceUpdated}
+                    trigger={
+                      <Button variant="outline" className="flex-1">
+                        Edit details
+                      </Button>
+                    }
+                  />
+                  {onSourceDeleted && (
+                    <SourceActionsMenu
+                      notebookId={notebookId}
+                      source={document}
+                      onUpdated={onSourceUpdated}
+                      onDeleted={(sourceId) => {
+                        onSourceDeleted(sourceId)
+                        onClose()
+                      }}
+                    />
+                  )}
+                </div>
+              )}
             </div>
           </ScrollArea>
         </TabsContent>
       </Tabs>
-    </div>
-  )
-}
-
-function LoadingState() {
-  return (
-    <div className="flex items-center justify-center gap-2 py-20 text-sm text-muted-foreground">
-      <Loader2 className="size-4 animate-spin" />
-      Loading file…
-    </div>
-  )
-}
-
-function EmptyState({
-  title,
-  description,
-  action,
-}: {
-  title: string
-  description: string
-  action?: React.ReactNode
-}) {
-  return (
-    <div className="mx-auto max-w-md rounded-lg border border-dashed bg-background px-6 py-12 text-center">
-      <FileText className="mx-auto mb-3 size-8 text-muted-foreground" />
-      <p className="text-sm font-medium">{title}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{description}</p>
-      {action && <div className="mt-4">{action}</div>}
     </div>
   )
 }
