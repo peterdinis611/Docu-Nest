@@ -1,4 +1,5 @@
 import { fileTypeLabels } from "@/lib/file-preview"
+import { clamp } from "@/lib/math"
 import type { SourceDocument, StudioOutputType } from "@/types"
 import { serializeStudioContent } from "./content"
 import type {
@@ -9,7 +10,7 @@ import type {
   TimelineEvent,
 } from "./types"
 
-const studioTitles: Record<StudioOutputType, string> = {
+export const STUDIO_TITLES: Record<StudioOutputType, string> = {
   "audio-overview": "Audio Overview",
   "study-guide": "Study Guide",
   "briefing-doc": "Briefing Doc",
@@ -167,26 +168,135 @@ function buildBriefingDoc(
   }
 }
 
-function buildMarkdownBody(
-  type: StudioOutputType,
+function buildStudyGuide(
   sources: SourceDocument[],
   notebookTitle: string
-): string {
+): StudioStructuredContent {
   const active = enabledSources(sources)
-  const sourceList =
-    active.length > 0
-      ? active.map((source) => `- **${source.title}** — ${source.description}`).join("\n")
-      : "- No active sources. Enable sources to include them in generation."
 
-  switch (type) {
-    case "study-guide":
-      return `## ${notebookTitle}\n\n### Active sources\n${sourceList}\n\n### Review prompts\n1. What themes connect these sources?\n2. Where do the sources agree or conflict?\n3. What is missing from the loaded material?`
-    case "faq":
-      return `**Q: How many sources are active?**\nA: ${active.length}\n\n**Q: What material is included?**\nA:\n${sourceList}\n\n**Q: Can answers use outside knowledge?**\nA: No — responses should stay grounded in uploaded sources.`
-    case "audio-overview":
-      return `Host A: Today we're walking through ${active.length} source(s) from "${notebookTitle}".\n\nHost B: ${active.map((source) => source.title).join(", ") || "No sources are active yet."}\n\nHost A: Use chat to dig deeper into any section that needs more detail.`
-    default:
-      return sourceList
+  const concepts = active.flatMap((source) => {
+    const chunks = splitDescription(source.description)
+    if (chunks.length === 0) {
+      return [
+        {
+          id: `${source.id}-0`,
+          term: source.title,
+          definition: source.description,
+          sourceTitle: source.title,
+        },
+      ]
+    }
+
+    return chunks.map((chunk, index) => ({
+      id: `${source.id}-${index}`,
+      term: index === 0 ? source.title : `${source.title} — point ${index + 1}`,
+      definition: chunk,
+      sourceTitle: source.title,
+    }))
+  })
+
+  const reviewQuestions =
+    active.length === 0
+      ? ["Upload sources to generate review questions."]
+      : [
+          `What themes connect the ${active.length} active source(s)?`,
+          "Where do the sources agree or conflict?",
+          "What important topics are missing from the loaded material?",
+          ...active.slice(0, 3).map((source) => `Summarize the key idea of "${source.title}".`),
+        ]
+
+  return {
+    format: "study-guide",
+    notebookTitle,
+    concepts: concepts.slice(0, 12),
+    reviewQuestions,
+  }
+}
+
+function buildFaq(sources: SourceDocument[]): StudioStructuredContent {
+  const active = enabledSources(sources)
+
+  const items =
+    active.length === 0
+      ? [
+          {
+            id: "empty",
+            question: "Why is the FAQ empty?",
+            answer: "Enable at least one source to generate questions from your material.",
+          },
+        ]
+      : active.flatMap((source) => [
+          {
+            id: `${source.id}-about`,
+            question: `What is "${source.title}" about?`,
+            answer: source.description,
+            sourceTitle: source.title,
+          },
+          {
+            id: `${source.id}-type`,
+            question: `What type of document is "${source.title}"?`,
+            answer: `It is a ${fileTypeLabels[source.type]} source in this notebook.`,
+            sourceTitle: source.title,
+          },
+        ])
+
+  return { format: "faq", items: items.slice(0, 16) }
+}
+
+function buildAudioOverview(
+  sources: SourceDocument[],
+  notebookTitle: string
+): StudioStructuredContent {
+  const active = enabledSources(sources)
+
+  if (active.length === 0) {
+    return {
+      format: "audio-overview",
+      notebookTitle,
+      duration: "0:00",
+      summary: "No active sources to discuss.",
+      segments: [
+        {
+          id: "empty-a",
+          speaker: "host-a",
+          text: "There are no active sources in this notebook yet.",
+        },
+        {
+          id: "empty-b",
+          speaker: "host-b",
+          text: "Upload and enable sources, then regenerate the audio overview.",
+        },
+      ],
+    }
+  }
+
+  const segments = active.flatMap((source, index) => {
+    const speaker = index % 2 === 0 ? ("host-a" as const) : ("host-b" as const)
+    const otherSpeaker = speaker === "host-a" ? ("host-b" as const) : ("host-a" as const)
+
+    return [
+      {
+        id: `${source.id}-intro`,
+        speaker,
+        text: `Let's look at "${source.title}" — a ${fileTypeLabels[source.type]} source.`,
+      },
+      {
+        id: `${source.id}-detail`,
+        speaker: otherSpeaker,
+        text: source.description,
+      },
+    ]
+  })
+
+  const minutes = clamp(active.length * 2, 3, 12)
+  const seconds = clamp(active.length * 17, 0, 59)
+
+  return {
+    format: "audio-overview",
+    notebookTitle,
+    duration: `${minutes}:${String(seconds).padStart(2, "0")}`,
+    summary: `A conversational walkthrough of ${active.length} source(s) from "${notebookTitle}".`,
+    segments: segments.slice(0, 20),
   }
 }
 
@@ -204,11 +314,14 @@ export function buildStudioStructuredContent(
       return buildFlashcards(sources)
     case "briefing-doc":
       return buildBriefingDoc(sources, notebookTitle)
+    case "study-guide":
+      return buildStudyGuide(sources, notebookTitle)
+    case "faq":
+      return buildFaq(sources)
+    case "audio-overview":
+      return buildAudioOverview(sources, notebookTitle)
     default:
-      return {
-        format: "markdown",
-        body: buildMarkdownBody(type, sources, notebookTitle),
-      }
+      return { format: "markdown", body: "Unsupported studio output type." }
   }
 }
 
@@ -220,8 +333,11 @@ export function generateStudioPayload(
   const structured = buildStudioStructuredContent(type, sources, notebookTitle)
 
   return {
-    title: studioTitles[type],
+    title: STUDIO_TITLES[type],
     content: serializeStudioContent(structured),
-    duration: type === "audio-overview" ? "8:42" : undefined,
+    duration:
+      type === "audio-overview" && structured.format === "audio-overview"
+        ? structured.duration
+        : undefined,
   }
 }

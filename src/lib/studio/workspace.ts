@@ -1,25 +1,22 @@
-import type { StudioOutput, StudioOutputType } from "@/types"
+import type { StudioOutputType } from "@/types"
+import { STUDIO_TEMPLATES } from "@/types"
 
-export const MAIN_WORKSPACE_STUDIO_TYPES = [
-  "mind-map",
-  "briefing-doc",
-] as const satisfies readonly StudioOutputType[]
+export const MAIN_WORKSPACE_STUDIO_TYPES = STUDIO_TEMPLATES.map(
+  (template) => template.type
+) as StudioOutputType[]
 
-export type MainWorkspaceStudioType = (typeof MAIN_WORKSPACE_STUDIO_TYPES)[number]
+export type MainWorkspaceStudioType = StudioOutputType
 
-export function opensInMainWorkspace(
-  type: StudioOutputType
-): type is MainWorkspaceStudioType {
-  return (MAIN_WORKSPACE_STUDIO_TYPES as readonly string[]).includes(type)
+export function opensInMainWorkspace(_type: StudioOutputType): _type is StudioOutputType {
+  return true
 }
 
 export function isMainWorkspaceStudioOutput(
-  output?: StudioOutput
-): output is StudioOutput & { type: MainWorkspaceStudioType } {
-  return output != null && opensInMainWorkspace(output.type)
+  output?: { type: StudioOutputType }
+): output is { type: StudioOutputType } {
+  return output != null
 }
 
-export const MAIN_WORKSPACE_LABELS: Record<MainWorkspaceStudioType, string> = {
-  "mind-map": "Mind map",
-  "briefing-doc": "Briefing doc",
-}
+export const MAIN_WORKSPACE_LABELS = Object.fromEntries(
+  STUDIO_TEMPLATES.map((template) => [template.type, template.description])
+) as Record<StudioOutputType, string>

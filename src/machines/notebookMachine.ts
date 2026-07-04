@@ -7,7 +7,6 @@ import {
   mockSourceGuide,
   mockSuggestedQuestions,
 } from "@/data/mock"
-import { opensInMainWorkspace } from "@/lib/studio/workspace"
 import type {
   ChatMessage,
   Notebook,
@@ -145,14 +144,7 @@ export const notebookMachine = setup({
         if (event.type !== "SELECT_DOCUMENT" || !event.documentId) {
           return context.activeStudioOutputId
         }
-
-        const active = context.studioOutputs.find(
-          (output) => output.id === context.activeStudioOutputId
-        )
-
-        return active && opensInMainWorkspace(active.type)
-          ? null
-          : context.activeStudioOutputId
+        return null
       },
     }),
     setDraft: assign({
@@ -223,9 +215,7 @@ export const notebookMachine = setup({
       generatingStudioType: () => null,
       selectedDocumentId: ({ context, event }) => {
         if (event.type !== "STUDIO_OUTPUT_READY") return context.selectedDocumentId
-        return opensInMainWorkspace(event.output.type)
-          ? null
-          : context.selectedDocumentId
+        return null
       },
     }),
     clearStudioGeneration: assign({
@@ -243,9 +233,7 @@ export const notebookMachine = setup({
           (item) => item.id === event.outputId
         )
 
-        return output && opensInMainWorkspace(output.type)
-          ? null
-          : context.selectedDocumentId
+        return event.outputId ? null : context.selectedDocumentId
       },
     }),
     toggleSourcesPanel: assign({

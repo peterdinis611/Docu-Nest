@@ -21,6 +21,7 @@ import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { EMPTY_ANALYTICS } from "@/lib/analytics"
+import { percentOf } from "@/lib/math"
 import { cn } from "@/lib/utils"
 import type { AnalyticsData, UsageMetric } from "@/types"
 
@@ -40,8 +41,7 @@ function formatMetricChange(metric: UsageMetric) {
 }
 
 function metricProgress(metric: UsageMetric, maxValue: number) {
-  if (maxValue <= 0) return 0
-  return Math.min(100, Math.round((metric.value / maxValue) * 100))
+  return percentOf(metric.value, maxValue)
 }
 
 export function AnalyticsPage({

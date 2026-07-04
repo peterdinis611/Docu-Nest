@@ -28,6 +28,26 @@ export interface Flashcard {
   sourceId?: string
 }
 
+export interface StudyGuideConcept {
+  id: string
+  term: string
+  definition: string
+  sourceTitle?: string
+}
+
+export interface FaqItem {
+  id: string
+  question: string
+  answer: string
+  sourceTitle?: string
+}
+
+export interface AudioSegment {
+  id: string
+  speaker: "host-a" | "host-b"
+  text: string
+}
+
 export type StudioStructuredContent =
   | { format: "markdown"; body: string }
   | {
@@ -43,3 +63,17 @@ export type StudioStructuredContent =
   | { format: "timeline"; events: TimelineEvent[] }
   | { format: "mind-map"; root: MindMapNode }
   | { format: "flashcards"; cards: Flashcard[] }
+  | {
+      format: "study-guide"
+      notebookTitle: string
+      concepts: StudyGuideConcept[]
+      reviewQuestions: string[]
+    }
+  | { format: "faq"; items: FaqItem[] }
+  | {
+      format: "audio-overview"
+      notebookTitle: string
+      duration: string
+      summary: string
+      segments: AudioSegment[]
+    }

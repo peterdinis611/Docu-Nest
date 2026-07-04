@@ -1,7 +1,5 @@
-import { ArrowLeft, Play } from "lucide-react"
-import { FlashcardsView } from "@/components/notebook/studio/FlashcardsView"
-import { MarkdownStudioView } from "@/components/notebook/studio/MarkdownStudioView"
-import { TimelineView } from "@/components/notebook/studio/TimelineView"
+import { ArrowLeft } from "lucide-react"
+import { StudioContentView } from "@/components/notebook/studio/StudioContentView"
 import { Button } from "@/components/ui/button"
 import { parseStudioContent } from "@/lib/studio/content"
 import type { StudioOutput } from "@/types"
@@ -11,8 +9,8 @@ interface StudioOutputViewerProps {
   onBack: () => void
 }
 
+/** @deprecated Use StudioWorkspacePreview in the main workspace instead. */
 export function StudioOutputViewer({ output, onBack }: StudioOutputViewerProps) {
-  const isAudio = output.type === "audio-overview"
   const parsed = parseStudioContent(output.content, output.type)
 
   return (
@@ -35,23 +33,7 @@ export function StudioOutputViewer({ output, onBack }: StudioOutputViewerProps) 
           )}
         </div>
 
-        {isAudio && (
-          <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
-            <button
-              type="button"
-              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
-            >
-              <Play className="size-4" />
-            </button>
-            <div className="h-1.5 flex-1 rounded-full bg-muted">
-              <div className="h-full w-1/3 rounded-full bg-primary" />
-            </div>
-          </div>
-        )}
-
-        {parsed.format === "timeline" && <TimelineView events={parsed.events} />}
-        {parsed.format === "flashcards" && <FlashcardsView cards={parsed.cards} />}
-        {parsed.format === "markdown" && <MarkdownStudioView content={parsed.body} />}
+        <StudioContentView content={parsed} variant="compact" />
       </div>
     </div>
   )

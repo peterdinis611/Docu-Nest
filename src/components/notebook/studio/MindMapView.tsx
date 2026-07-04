@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import { Network, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { math, polarToCartesian } from "@/lib/math"
 import type { MindMapNode } from "@/lib/studio/types"
 
 const branchThemes = [
@@ -72,18 +73,19 @@ function layoutBranches(
 ): LayoutNode[] {
   if (branches.length === 0) return []
 
-  const rootX = canvasWidth / 2
-  const startAngle = Math.PI * 0.1
-  const endAngle = Math.PI * 0.9
+  const startAngle = math.multiply(math.pi, 0.1) as number
+  const endAngle = math.multiply(math.pi, 0.9) as number
 
   return branches.map((branch, index) => {
     const t = branches.length === 1 ? 0.5 : index / (branches.length - 1)
     const angle = startAngle + (endAngle - startAngle) * t
+    const rootX = canvasWidth / 2
+    const point = polarToCartesian(rootX, rootY, branchRadius, angle)
 
     return {
       branch,
-      x: rootX + branchRadius * Math.cos(angle),
-      y: rootY + branchRadius * Math.sin(angle),
+      x: point.x,
+      y: point.y,
       themeIndex: index % branchThemes.length,
     }
   })

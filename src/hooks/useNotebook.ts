@@ -3,7 +3,6 @@ import { useMachine } from "@xstate/react"
 import { toast } from "sonner"
 import { generateStudioOutputAction } from "@/actions/studio"
 import { createStudioOutput } from "@/data/mock"
-import { isMainWorkspaceStudioOutput } from "@/lib/studio/workspace"
 import { notebookMachine } from "@/machines/notebookMachine"
 import type { NotebookPageData, SourceDocument, StudioOutputType } from "@/types"
 
@@ -42,9 +41,7 @@ export function useNotebook(serverData?: NotebookPageData) {
     (o) => o.id === state.context.activeStudioOutputId
   )
 
-  const activeMainStudioOutput = isMainWorkspaceStudioOutput(activeStudioOutput)
-    ? activeStudioOutput
-    : undefined
+  const activeMainStudioOutput = activeStudioOutput
 
   const enabledCount = state.context.documents.filter((d) => d.enabled).length
 

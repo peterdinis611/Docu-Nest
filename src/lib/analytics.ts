@@ -1,4 +1,5 @@
 import type { AnalyticsData } from "@/types"
+import { percentChange, roundTo } from "@/lib/math"
 
 export const EMPTY_ANALYTICS: AnalyticsData = {
   metrics: [
@@ -62,14 +63,6 @@ function inRange(iso: string, startMs: number, endMs: number) {
   return t >= startMs && t < endMs
 }
 
-function percentChange(current: number, previous: number) {
-  if (previous === 0) return current > 0 ? 100 : 0
-  return Math.round(((current - previous) / previous) * 1000) / 10
-}
-
-function round1(n: number) {
-  return Math.round(n * 10) / 10
-}
 
 const MINUTES_SAVED_PER_ANSWER = 4
 
@@ -149,9 +142,9 @@ export function buildAnalyticsData(input: {
     weekStart
   )
 
-  const hoursThisWeek = round1((answersThisWeek * MINUTES_SAVED_PER_ANSWER) / 60)
-  const hoursPrevWeek = round1((answersPrevWeek * MINUTES_SAVED_PER_ANSWER) / 60)
-  const hoursChange = round1(hoursThisWeek - hoursPrevWeek)
+  const hoursThisWeek = roundTo((answersThisWeek * MINUTES_SAVED_PER_ANSWER) / 60, 1)
+  const hoursPrevWeek = roundTo((answersPrevWeek * MINUTES_SAVED_PER_ANSWER) / 60, 1)
+  const hoursChange = roundTo(hoursThisWeek - hoursPrevWeek, 1)
 
   const weeklyActivity = getLast7DayBuckets().map((bucket) => ({
     day: bucket.label,
@@ -208,7 +201,7 @@ export function buildAnalyticsData(input: {
       .slice(0, 4),
     breakdown: {
       chatSessions: questionsThisWeek,
-      avgChatsPerDay: round1(questionsThisWeek / 7),
+      avgChatsPerDay: roundTo(questionsThisWeek / 7, 1),
       documentsAdded: sourcesThisWeek,
       notebooksWithUploads,
       studioGenerated: studioThisWeek,

@@ -25,6 +25,7 @@ import {
   isMarkdownFile,
 } from "@/lib/file-preview"
 import { downloadRemoteFile } from "@/lib/download-file"
+import { clamp, roundTo } from "@/lib/math"
 import { cn } from "@/lib/utils"
 import type { SourceDocument } from "@/types"
 
@@ -115,9 +116,7 @@ export function FileViewer({
   }, [document.id, fileUrl, mode])
 
   function changeZoom(delta: number) {
-    setZoom((value) =>
-      Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number((value + delta).toFixed(1))))
-    )
+    setZoom((value) => roundTo(clamp(value + delta, ZOOM_MIN, ZOOM_MAX), 1))
   }
 
   function goTo(offset: number) {
@@ -193,7 +192,7 @@ export function FileViewer({
               <Minus className="size-3.5" />
             </Button>
             <span className="w-10 text-center text-[11px] tabular-nums text-muted-foreground">
-              {Math.round(zoom * 100)}%
+              {roundTo(zoom * 100, 0)}%
             </span>
             <Button
               variant="ghost"

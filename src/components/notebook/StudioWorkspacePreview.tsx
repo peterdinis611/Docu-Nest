@@ -1,8 +1,7 @@
 "use client"
 
 import { X } from "lucide-react"
-import { BriefingDocView } from "@/components/notebook/studio/BriefingDocView"
-import { MindMapView } from "@/components/notebook/studio/MindMapView"
+import { StudioContentView } from "@/components/notebook/studio/StudioContentView"
 import { Button } from "@/components/ui/button"
 import { parseStudioContent } from "@/lib/studio/content"
 import { MAIN_WORKSPACE_LABELS } from "@/lib/studio/workspace"
@@ -15,7 +14,6 @@ interface StudioWorkspacePreviewProps {
 
 export function StudioWorkspacePreview({ output, onClose }: StudioWorkspacePreviewProps) {
   const parsed = parseStudioContent(output.content, output.type)
-  const subtitle = MAIN_WORKSPACE_LABELS[output.type as keyof typeof MAIN_WORKSPACE_LABELS]
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
@@ -31,15 +29,19 @@ export function StudioWorkspacePreview({ output, onClose }: StudioWorkspacePrevi
         </Button>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{output.title}</p>
-          <p className="text-[11px] text-muted-foreground">{subtitle}</p>
+          <p className="text-[11px] text-muted-foreground">
+            {MAIN_WORKSPACE_LABELS[output.type]}
+          </p>
         </div>
+        {output.duration && (
+          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+            {output.duration}
+          </span>
+        )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4 lg:p-6">
-        {parsed.format === "mind-map" && (
-          <MindMapView root={parsed.root} variant="expanded" />
-        )}
-        {parsed.format === "briefing-doc" && <BriefingDocView briefing={parsed} />}
+        <StudioContentView content={parsed} variant="expanded" />
       </div>
     </div>
   )
