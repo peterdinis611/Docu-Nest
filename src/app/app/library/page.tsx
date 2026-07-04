@@ -1,11 +1,12 @@
 import { Suspense } from "react"
 import { auth } from "@clerk/nextjs/server"
+import { AppPageSkeleton } from "@/components/feedback/AppPageSkeleton"
 import { LibraryPage } from "@/views/LibraryPage"
 import { getCachedLibraryDocumentsForUser } from "@/lib/cached-data"
 
 export default function Page() {
   return (
-    <Suspense fallback={<LibraryPage documents={[]} />}>
+    <Suspense fallback={<AppPageSkeleton />}>
       <LibraryPageContent />
     </Suspense>
   )

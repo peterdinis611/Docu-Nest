@@ -1,6 +1,7 @@
 import { Suspense } from "react"
 import { auth } from "@clerk/nextjs/server"
 import { AppLayout } from "@/components/layout/AppLayout"
+import { AppPageSkeleton } from "@/components/feedback/AppPageSkeleton"
 import { getCachedSidebarNotebooks } from "@/lib/cached-data"
 
 export default function Layout({
@@ -12,9 +13,7 @@ export default function Layout({
     <Suspense
       fallback={
         <AppLayout recentNotebooks={[]}>
-          <div className="mx-auto max-w-6xl px-6 py-8 lg:px-8">
-            <div className="h-8 w-48 animate-pulse rounded-md bg-muted" />
-          </div>
+          <AppPageSkeleton />
         </AppLayout>
       }
     >

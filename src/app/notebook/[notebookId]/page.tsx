@@ -1,6 +1,7 @@
 import { Suspense } from "react"
 import { auth } from "@clerk/nextjs/server"
 import { notFound } from "next/navigation"
+import { NotebookPageSkeleton } from "@/components/feedback/NotebookPageSkeleton"
 import { getCachedNotebookPageData } from "@/lib/cached-data"
 import { NotebookPage } from "@/views/NotebookPage"
 
@@ -10,17 +11,9 @@ export default function Page({
   params: Promise<{ notebookId: string }>
 }) {
   return (
-    <Suspense fallback={<NotebookPageFallback />}>
+    <Suspense fallback={<NotebookPageSkeleton />}>
       <NotebookPageContent params={params} />
     </Suspense>
-  )
-}
-
-function NotebookPageFallback() {
-  return (
-    <div className="flex h-screen items-center justify-center bg-background">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-foreground" />
-    </div>
   )
 }
 

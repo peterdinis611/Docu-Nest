@@ -7,6 +7,13 @@ import {
   sources,
   studioOutputs,
 } from "./schema"
+import type { ActivityItem } from "@/types"
+
+function truncateActivityTitle(text: string, max = 72) {
+  const normalized = text.trim().replace(/\s+/g, " ")
+  if (normalized.length <= max) return normalized
+  return `${normalized.slice(0, max - 1)}…`
+}
 
 export function createNotebookForUser(
   userId: string,
@@ -130,6 +137,97 @@ export function listNotebooksForUser(userId: string, limit?: number) {
     .orderBy(desc(notebooks.updatedAt))
 
   return (limit ? query.limit(limit) : query).all()
+}
+
+export function listRecentActivityForUser(
+  userId: string,
+  limit = 5
+): ActivityItem[] {
+  const userMessages = db
+    .select({
+      id: messages.id,
+      content: messages.content,
+      createdAt: messages.createdAt,
+      notebookTitle: notebooks.title,
+    })
+    .from(messages)
+    .innerJoin(notebooks, eq(messages.notebookId, notebooks.id))
+    .where(and(eq(notebooks.userId, userId), eq(messages.role, "user")))
+    .all()
+
+  const userSources = db
+    .select({
+      id: sources.id,
+      title: sources.title,
+      uploadedAt: sources.uploadedAt,
+      notebookTitle: notebooks.title,
+    })
+    .from(sources)
+    .innerJoin(notebooks, eq(sources.notebookId, notebooks.id))
+    .where(eq(notebooks.userId, userId))
+    .all()
+
+  const userStudioOutputs = db
+    .select({
+      id: studioOutputs.id,
+      title: studioOutputs.title,
+      createdAt: studioOutputs.createdAt,
+      notebookTitle: notebooks.title,
+    })
+    .from(studioOutputs)
+    .innerJoin(notebooks, eq(studioOutputs.notebookId, notebooks.id))
+    .where(and(eq(notebooks.userId, userId), eq(studioOutputs.status, "ready")))
+    .all()
+
+  const userSavedNotes = db
+    .select({
+      id: savedNotes.id,
+      title: savedNotes.title,
+      createdAt: savedNotes.createdAt,
+      notebookTitle: notebooks.title,
+    })
+    .from(savedNotes)
+    .innerJoin(notebooks, eq(savedNotes.notebookId, notebooks.id))
+    .where(eq(notebooks.userId, userId))
+    .all()
+
+  const items: ActivityItem[] = [
+    ...userMessages.map((message) => ({
+      id: `chat-${message.id}`,
+      type: "chat" as const,
+      title: truncateActivityTitle(message.content),
+      notebookTitle: message.notebookTitle,
+      timestamp: message.createdAt,
+    })),
+    ...userSources.map((source) => ({
+      id: `upload-${source.id}`,
+      type: "upload" as const,
+      title: `Uploaded ${source.title}`,
+      notebookTitle: source.notebookTitle,
+      timestamp: source.uploadedAt,
+    })),
+    ...userStudioOutputs.map((output) => ({
+      id: `studio-${output.id}`,
+      type: "studio" as const,
+      title: `Generated ${output.title}`,
+      notebookTitle: output.notebookTitle,
+      timestamp: output.createdAt,
+    })),
+    ...userSavedNotes.map((note) => ({
+      id: `note-${note.id}`,
+      type: "note" as const,
+      title: `Saved ${note.title}`,
+      notebookTitle: note.notebookTitle,
+      timestamp: note.createdAt,
+    })),
+  ]
+
+  return items
+    .sort(
+      (a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    )
+    .slice(0, limit)
 }
 
 export function listSourcesForUser(userId: string) {

@@ -6,17 +6,17 @@ export default function NotFound() {
   return (
     <StatusPage
       code="404"
-      title="Page not found"
-      description="The page you're looking for doesn't exist or may have been moved."
-      icon="file-question"
+      title="Notebook not found"
+      description="This notebook may have been deleted, or you may not have access to it."
+      icon="book-x"
       variant="fullscreen"
       actions={
         <>
           <Button asChild>
-            <Link href="/">Go to sign in</Link>
+            <Link href="/app">All notebooks</Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/app">Open dashboard</Link>
+            <Link href="/app/library">Browse library</Link>
           </Button>
         </>
       }

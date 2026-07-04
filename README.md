@@ -60,7 +60,22 @@ Schema: `src/db/schema.ts` · Client: `src/db/index.ts` · Queries: `src/db/quer
 
 ## E2E Tests (Cypress)
 
-Tests live in `cypress/e2e/`. The landing page test runs without credentials. Authenticated tests use [@clerk/testing](https://clerk.com/docs/guides/development/testing/cypress/overview) and require a Clerk test user with password sign-in enabled.
+Tests live in `cypress/e2e/`:
+
+| Spec | Coverage |
+|------|----------|
+| `landing.cy.ts` | Sign-in page, auth redirect, protected routes |
+| `app-navigation.cy.ts` | Sidebar navigation between app pages |
+| `home.cy.ts` | Dashboard sections, create notebook dialog |
+| `library.cy.ts` | Search, filters, grid/list view |
+| `analytics.cy.ts` | Metrics cards and analytics tabs |
+| `global-search.cy.ts` | ⌘K search dialog, results, keyboard close |
+| `settings.cy.ts` | Settings section navigation |
+| `settings-extended.cy.ts` | Theme toggle, usage stats, data actions |
+| `notebook.cy.ts` | End-to-end notebook creation |
+| `not-found.cy.ts` | App and notebook 404 pages |
+
+The landing page test runs without credentials. Authenticated tests use [@clerk/testing](https://clerk.com/docs/guides/development/testing/cypress/overview) and require a Clerk test user with password sign-in enabled.
 
 Add to `.env.local`:
 

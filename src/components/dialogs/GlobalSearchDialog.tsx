@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { AnimatePresence, motion } from "framer-motion"
 import { useAction } from "next-safe-action/hooks"
 import { toast } from "sonner"
 import {
@@ -11,12 +10,12 @@ import {
   FileText,
   FolderOpen,
   Home,
-  Loader2,
   Search,
   Settings,
   type LucideIcon,
 } from "lucide-react"
 import { globalSearchAction } from "@/actions/search"
+import { PresenceSwap, Spinner } from "@/components/motion"
 import {
   Dialog,
   DialogContent,
@@ -133,29 +132,18 @@ export function GlobalSearchDialog() {
         </DialogHeader>
 
         <div className="flex items-center gap-3 border-b border-border/80 px-4 py-3">
-          <AnimatePresence mode="wait" initial={false}>
+          <PresenceSwap
+            presentKey={isExecuting ? "loading" : "search"}
+            preset="pop"
+            initial={false}
+            className="shrink-0"
+          >
             {isExecuting ? (
-              <motion.div
-                key="loading"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.15 }}
-              >
-                <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />
-              </motion.div>
+              <Spinner size="sm" className="text-muted-foreground" />
             ) : (
-              <motion.div
-                key="search"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.15 }}
-              >
-                <Search className="size-4 shrink-0 text-muted-foreground" />
-              </motion.div>
+              <Search className="size-4 text-muted-foreground" />
             )}
-          </AnimatePresence>
+          </PresenceSwap>
           <input
             autoFocus
             value={query}
@@ -172,46 +160,35 @@ export function GlobalSearchDialog() {
           </kbd>
         </div>
 
-        <AnimatePresence mode="popLayout" initial={false}>
+        <PresenceSwap
+          presentKey={
+            showLoading
+              ? "loading"
+              : showEmpty
+                ? `empty-${emptyVariant}`
+                : "results"
+          }
+          mode="popLayout"
+          initial={false}
+          preset="fade"
+        >
           {showLoading ? (
-            <motion.div
-              key="loading"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center justify-center py-12"
-            >
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            </motion.div>
+            <div className="flex items-center justify-center py-12">
+              <Spinner size="lg" className="text-muted-foreground" />
+            </div>
           ) : showEmpty ? (
-            <motion.div
-              key="empty"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-            >
-              <SearchEmptyState variant={emptyVariant} query={query} />
-            </motion.div>
+            <SearchEmptyState variant={emptyVariant} query={query} />
           ) : (
-            <motion.div
-              key="results"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-            >
-              <SearchResultList
-                results={results}
-                kindOrder={kindOrder}
-                activeIndex={activeIndex}
-                getItemIcon={getItemIcon}
-                onSelect={selectItem}
-                onActiveIndexChange={setActiveIndex}
-              />
-            </motion.div>
+            <SearchResultList
+              results={results}
+              kindOrder={kindOrder}
+              activeIndex={activeIndex}
+              getItemIcon={getItemIcon}
+              onSelect={selectItem}
+              onActiveIndexChange={setActiveIndex}
+            />
           )}
-        </AnimatePresence>
+        </PresenceSwap>
 
         <div className="flex items-center justify-between border-t border-border/80 bg-muted/30 px-4 py-2 text-[10px] text-muted-foreground">
           <span>↑↓ navigate · ↵ open · esc close</span>

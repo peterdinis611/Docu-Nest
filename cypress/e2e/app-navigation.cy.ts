@@ -1,11 +1,6 @@
 describe("App navigation", () => {
   beforeEach(function () {
-    cy.hasTestCredentials().then((configured) => {
-      if (!configured) {
-        this.skip()
-      }
-    })
-
+    cy.skipWithoutAuth()
     cy.signInTestUser()
   })
 

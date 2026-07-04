@@ -1,11 +1,6 @@
 describe("Settings", () => {
   beforeEach(function () {
-    cy.hasTestCredentials().then((configured) => {
-      if (!configured) {
-        this.skip()
-      }
-    })
-
+    cy.skipWithoutAuth()
     cy.signInTestUser()
     cy.visit("/app/settings")
   })

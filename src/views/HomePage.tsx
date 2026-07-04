@@ -23,7 +23,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { mockActivity, mockUsageMetrics } from "@/data/mock"
+import { mockUsageMetrics } from "@/data/mock"
 import { getNotebookDotClass } from "@/lib/notebook-colors"
 import { cn } from "@/lib/utils"
 import type { ActivityItem, Notebook } from "@/types"
@@ -50,7 +50,13 @@ function getGreeting(name?: string | null) {
   return name ? `${time}, ${name}` : time
 }
 
-export function HomePage({ notebooks }: { notebooks: Notebook[] }) {
+export function HomePage({
+  notebooks,
+  activity,
+}: {
+  notebooks: Notebook[]
+  activity: ActivityItem[]
+}) {
   const { user } = useUser()
   const totalSources = notebooks.reduce((s, n) => s + n.sourceCount, 0)
   const totalMessages = notebooks.reduce((s, n) => s + n.messageCount, 0)
@@ -209,33 +215,40 @@ export function HomePage({ notebooks }: { notebooks: Notebook[] }) {
             <h2 className="text-sm font-medium">Recent activity</h2>
 
             <Card>
-              <ul className="divide-y">
-                {mockActivity.map((item) => {
-                  const Icon = activityIcons[item.type]
-                  return (
-                    <li
-                      key={item.id}
-                      className="flex items-start gap-3 px-4 py-3"
-                    >
-                      <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border bg-muted/50">
-                        <Icon className="size-3.5 text-muted-foreground" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm leading-snug">
-                          {item.title}
-                        </p>
-                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                          {item.notebookTitle}
-                        </p>
-                      </div>
-                      <span className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
-                        <Clock className="size-3" />
-                        {formatRelativeTime(item.timestamp)}
-                      </span>
-                    </li>
-                  )
-                })}
-              </ul>
+              {activity.length === 0 ? (
+                <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  No recent activity yet. Upload a source, chat, or generate
+                  studio content to see updates here.
+                </div>
+              ) : (
+                <ul className="divide-y">
+                  {activity.map((item) => {
+                    const Icon = activityIcons[item.type]
+                    return (
+                      <li
+                        key={item.id}
+                        className="flex items-start gap-3 px-4 py-3"
+                      >
+                        <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border bg-muted/50">
+                          <Icon className="size-3.5 text-muted-foreground" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm leading-snug">
+                            {item.title}
+                          </p>
+                          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                            {item.notebookTitle}
+                          </p>
+                        </div>
+                        <span className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
+                          <Clock className="size-3" />
+                          {formatRelativeTime(item.timestamp)}
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
             </Card>
           </div>
         </div>

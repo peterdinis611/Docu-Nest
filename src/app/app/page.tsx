@@ -1,11 +1,15 @@
 import { Suspense } from "react"
 import { auth } from "@clerk/nextjs/server"
+import { AppPageSkeleton } from "@/components/feedback/AppPageSkeleton"
 import { HomePage } from "@/views/HomePage"
-import { getCachedNotebooksForUser } from "@/lib/cached-data"
+import {
+  getCachedNotebooksForUser,
+  getCachedRecentActivityForUser,
+} from "@/lib/cached-data"
 
 export default function Page() {
   return (
-    <Suspense fallback={<HomePage notebooks={[]} />}>
+    <Suspense fallback={<AppPageSkeleton />}>
       <HomePageContent />
     </Suspense>
   )
@@ -13,7 +17,12 @@ export default function Page() {
 
 async function HomePageContent() {
   const { userId } = await auth()
-  const notebooks = userId ? await getCachedNotebooksForUser(userId) : []
+  const [notebooks, activity] = userId
+    ? await Promise.all([
+        getCachedNotebooksForUser(userId),
+        getCachedRecentActivityForUser(userId),
+      ])
+    : [[], []]
 
-  return <HomePage notebooks={notebooks} />
+  return <HomePage notebooks={notebooks} activity={activity} />
 }

@@ -1,8 +1,11 @@
 declare global {
   namespace Cypress {
     interface Chainable {
+      skipWithoutAuth(): Chainable<void>
       signInTestUser(): Chainable<void>
       hasTestCredentials(): Chainable<boolean>
+      openGlobalSearch(): Chainable<void>
+      uniqueTestName(prefix: string): Chainable<string>
     }
   }
 }
@@ -13,6 +16,13 @@ function hasTestCredentials(): boolean {
 
 Cypress.Commands.add("hasTestCredentials", () => {
   return cy.wrap(hasTestCredentials())
+})
+
+Cypress.Commands.add("skipWithoutAuth", function () {
+  if (!hasTestCredentials()) {
+    cy.log("Skipping — set CYPRESS_TEST_EMAIL and CYPRESS_TEST_PASSWORD")
+    this.skip()
+  }
 })
 
 Cypress.Commands.add("signInTestUser", () => {
@@ -40,6 +50,16 @@ Cypress.Commands.add("signInTestUser", () => {
       },
     }
   )
+})
+
+Cypress.Commands.add("openGlobalSearch", () => {
+  cy.get("aside").contains("button", "Search…").click()
+  cy.get('[role="dialog"]').should("be.visible")
+  cy.contains("Search notebooks, documents, and pages").should("exist")
+})
+
+Cypress.Commands.add("uniqueTestName", (prefix: string) => {
+  return cy.wrap(`${prefix} ${Date.now()}`)
 })
 
 export {}

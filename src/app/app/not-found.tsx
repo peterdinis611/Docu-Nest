@@ -7,16 +7,15 @@ export default function NotFound() {
     <StatusPage
       code="404"
       title="Page not found"
-      description="The page you're looking for doesn't exist or may have been moved."
+      description="This page doesn't exist in your workspace."
       icon="file-question"
-      variant="fullscreen"
       actions={
         <>
           <Button asChild>
-            <Link href="/">Go to sign in</Link>
+            <Link href="/app">Back to home</Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/app">Open dashboard</Link>
+            <Link href="/app/library">Browse library</Link>
           </Button>
         </>
       }

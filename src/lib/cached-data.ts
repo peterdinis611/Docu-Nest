@@ -5,6 +5,7 @@ import {
   getNotebookById,
   listLibraryDocumentsForUser,
   listNotebooksForUser,
+  listRecentActivityForUser,
 } from "@/db/queries"
 import { getAnalyticsForUser } from "@/lib/analytics-service"
 import { getSettingsSummaryForUser } from "@/lib/settings-service"
@@ -18,7 +19,7 @@ import {
   mapSourceDocument,
   mapStudioOutput,
 } from "@/lib/notebook-mappers"
-import type { LibraryDocument, Notebook, NotebookPageData } from "@/types"
+import type { LibraryDocument, Notebook, NotebookPageData, ActivityItem } from "@/types"
 import type { AnalyticsData } from "@/types"
 
 export type SidebarNotebook = {
@@ -35,6 +36,18 @@ export async function getCachedNotebooksForUser(
   cacheLife("minutes")
 
   return listNotebooksForUser(userId).map(mapNotebookSummary)
+}
+
+export async function getCachedRecentActivityForUser(
+  userId: string,
+  limit = 5
+): Promise<ActivityItem[]> {
+  "use cache"
+  cacheTag(cacheTags.userNotebooks(userId))
+  cacheTag(cacheTags.userAnalytics(userId))
+  cacheLife("minutes")
+
+  return listRecentActivityForUser(userId, limit)
 }
 
 export async function getCachedSidebarNotebooks(

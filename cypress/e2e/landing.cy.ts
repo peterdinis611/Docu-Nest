@@ -28,3 +28,11 @@ describe("Landing page", () => {
     })
   })
 })
+
+describe("Auth protection", () => {
+  it("blocks unauthenticated access to the dashboard", () => {
+    setupClerkTestingToken()
+    cy.visit("/app", { failOnStatusCode: false })
+    cy.contains("button", "New notebook").should("not.exist")
+  })
+})

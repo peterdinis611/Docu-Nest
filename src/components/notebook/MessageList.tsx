@@ -1,4 +1,5 @@
 import { Bot, User } from "lucide-react"
+import { TypingIndicator } from "@/components/motion"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -88,14 +89,7 @@ export function MessageList({ messages, isResponding }: MessageListProps) {
               DocuNest
             </span>
             <div className="flex items-center gap-2 rounded-2xl border bg-card px-4 py-3">
-              <div className="flex gap-1">
-                <span className="size-1.5 animate-bounce rounded-full bg-primary/60 [animation-delay:0ms]" />
-                <span className="size-1.5 animate-bounce rounded-full bg-primary/60 [animation-delay:150ms]" />
-                <span className="size-1.5 animate-bounce rounded-full bg-primary/60 [animation-delay:300ms]" />
-              </div>
-              <span className="text-xs text-muted-foreground">
-                Searching sources…
-              </span>
+              <TypingIndicator />
             </div>
           </div>
         </div>

@@ -1,12 +1,13 @@
 import { Suspense } from "react"
 import { auth } from "@clerk/nextjs/server"
+import { AppPageSkeleton } from "@/components/feedback/AppPageSkeleton"
 import { AnalyticsPage } from "@/views/AnalyticsPage"
 import { EMPTY_ANALYTICS } from "@/lib/analytics"
 import { getCachedAnalyticsForUser } from "@/lib/cached-data"
 
 export default function Page() {
   return (
-    <Suspense fallback={<AnalyticsPage data={EMPTY_ANALYTICS} />}>
+    <Suspense fallback={<AppPageSkeleton />}>
       <AnalyticsPageContent />
     </Suspense>
   )
