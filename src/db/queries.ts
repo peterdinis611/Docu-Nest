@@ -510,3 +510,15 @@ export function createStudioOutputForNotebook(
 
   return db.select().from(studioOutputs).where(eq(studioOutputs.id, input.id)).get()!
 }
+
+export function deleteAllNotebooksForUser(userId: string) {
+  const count = db
+    .select({ id: notebooks.id })
+    .from(notebooks)
+    .where(eq(notebooks.userId, userId))
+    .all().length
+
+  db.delete(notebooks).where(eq(notebooks.userId, userId)).run()
+
+  return { deletedCount: count }
+}

@@ -1,6 +1,7 @@
 import { Effect } from "effect"
 import { updateTag } from "next/cache"
 import {
+  deleteAllNotebooksForUser,
   deleteNotebookForUser,
   updateNotebookForUser,
 } from "@/db/queries"
@@ -61,3 +62,14 @@ export const deleteNotebookEffect = Effect.fn("deleteNotebook")(function* (input
     )
   }
 })
+
+export const deleteAllNotebooksEffect = Effect.fn("deleteAllNotebooks")(
+  function* (input: { userId: string }) {
+    const result = deleteAllNotebooksForUser(input.userId)
+
+    updateTag(cacheTags.userNotebooks(input.userId))
+    updateTag(cacheTags.userAnalytics(input.userId))
+
+    return result
+  }
+)

@@ -3,6 +3,7 @@
 import { z } from "zod"
 import { createNotebookForUser } from "@/db/queries"
 import {
+  deleteAllNotebooksEffect,
   deleteNotebookEffect,
   runServerEffect,
   updateNotebookEffect,
@@ -79,4 +80,10 @@ export const deleteNotebookAction = authActionClient
   .inputSchema(z.object({ notebookId: z.string().min(1) }))
   .action(async ({ parsedInput: { notebookId }, ctx: { userId } }) =>
     runServerEffect(deleteNotebookEffect({ userId, notebookId }))
+  )
+
+export const deleteAllNotebooksAction = authActionClient
+  .inputSchema(z.object({ confirm: z.literal(true) }))
+  .action(async ({ ctx: { userId } }) =>
+    runServerEffect(deleteAllNotebooksEffect({ userId }))
   )

@@ -7,7 +7,9 @@ import {
   listNotebooksForUser,
 } from "@/db/queries"
 import { getAnalyticsForUser } from "@/lib/analytics-service"
+import { getSettingsSummaryForUser } from "@/lib/settings-service"
 import { cacheTags } from "@/lib/cache-tags"
+import type { SettingsSummary } from "@/lib/user-preferences"
 import {
   mapChatMessage,
   mapLibraryDocument,
@@ -69,6 +71,17 @@ export async function getCachedLibraryDocumentsForUser(
   cacheLife("minutes")
 
   return listLibraryDocumentsForUser(userId).map(mapLibraryDocument)
+}
+
+export async function getCachedSettingsSummaryForUser(
+  userId: string
+): Promise<SettingsSummary> {
+  "use cache"
+  cacheTag(cacheTags.userNotebooks(userId))
+  cacheTag(cacheTags.userAnalytics(userId))
+  cacheLife("minutes")
+
+  return getSettingsSummaryForUser(userId)
 }
 
 export async function getCachedNotebookPageData(

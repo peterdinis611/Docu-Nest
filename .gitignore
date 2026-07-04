@@ -34,3 +34,8 @@ data/
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# Cypress
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/
