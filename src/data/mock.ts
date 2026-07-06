@@ -209,12 +209,16 @@ export const mockSavedNotes: SavedNote[] = [
     title: "Citation format rules",
     excerpt:
       "Use [Source: doc, section] for single refs. Label synthesis and framing explicitly.",
+    body:
+      "Use [Source: doc, section] for single refs. Label synthesis and framing explicitly.",
     createdAt: "2026-06-13T11:00:00Z",
   },
   {
     id: "note-2",
     title: "RAG pipeline checklist",
     excerpt:
+      "Chunk with overlap, hybrid retrieval, always return citations with answers.",
+    body:
       "Chunk with overlap, hybrid retrieval, always return citations with answers.",
     createdAt: "2026-06-13T15:20:00Z",
   },

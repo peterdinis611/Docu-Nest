@@ -1,13 +1,15 @@
-import { desc, eq, sql, and } from "drizzle-orm"
+import { desc, eq, sql, and, inArray } from "drizzle-orm"
 import { db } from "./index"
 import {
   messages,
   notebooks,
   savedNotes,
+  sourceChunks,
   sources,
   studioOutputs,
 } from "./schema"
-import type { ActivityItem } from "@/types"
+import type { ActivityItem, InteractionMode } from "@/types"
+import type { IndexStatus } from "./schema"
 
 function truncateActivityTitle(text: string, max = 72) {
   const normalized = text.trim().replace(/\s+/g, " ")
@@ -58,11 +60,15 @@ export function createSourceForNotebook(
     title: string
     type: "pdf" | "article" | "note" | "webpage"
     description?: string
-    uploadthingFileId: string
-    fileUrl: string
+    uploadthingFileId?: string
+    fileUrl?: string
+    sourceUrl?: string
     mimeType?: string
-    originalName: string
+    originalName?: string
     fileSize?: number
+    extractedText?: string
+    indexStatus?: IndexStatus
+    pageCount?: number
   }
 ) {
   const notebook = db
@@ -75,19 +81,21 @@ export function createSourceForNotebook(
     throw new Error("Notebook not found")
   }
 
-  const existing = db
-    .select()
-    .from(sources)
-    .where(
-      and(
-        eq(sources.notebookId, input.notebookId),
-        eq(sources.fileKey, input.uploadthingFileId)
+  if (input.uploadthingFileId) {
+    const existing = db
+      .select()
+      .from(sources)
+      .where(
+        and(
+          eq(sources.notebookId, input.notebookId),
+          eq(sources.fileKey, input.uploadthingFileId)
+        )
       )
-    )
-    .get()
+      .get()
 
-  if (existing) {
-    return existing
+    if (existing) {
+      return existing
+    }
   }
 
   const now = new Date().toISOString()
@@ -98,12 +106,16 @@ export function createSourceForNotebook(
       notebookId: input.notebookId,
       title: input.title,
       type: input.type,
-      description: input.description ?? "Uploaded file — indexing pending.",
-      fileKey: input.uploadthingFileId,
-      fileUrl: input.fileUrl,
+      description: input.description ?? "Indexing pending…",
+      fileKey: input.uploadthingFileId ?? null,
+      fileUrl: input.fileUrl ?? null,
+      sourceUrl: input.sourceUrl ?? null,
       mimeType: input.mimeType ?? null,
-      originalName: input.originalName,
+      originalName: input.originalName ?? null,
       fileSize: input.fileSize ?? null,
+      extractedText: input.extractedText ?? null,
+      indexStatus: input.indexStatus ?? "pending",
+      pageCount: input.pageCount ?? null,
       enabled: true,
       uploadedAt: now,
     })
@@ -115,6 +127,77 @@ export function createSourceForNotebook(
     .run()
 
   return db.select().from(sources).where(eq(sources.id, input.id)).get()!
+}
+
+export function updateSourceIndexing(
+  sourceId: string,
+  input: {
+    extractedText?: string
+    description?: string
+    pageCount?: number
+    indexStatus: IndexStatus
+    title?: string
+  }
+) {
+  const updates: {
+    extractedText?: string
+    description?: string
+    pageCount?: number
+    indexStatus: IndexStatus
+    title?: string
+  } = {
+    indexStatus: input.indexStatus,
+  }
+
+  if (input.extractedText !== undefined) updates.extractedText = input.extractedText
+  if (input.description !== undefined) updates.description = input.description
+  if (input.pageCount !== undefined) updates.pageCount = input.pageCount
+  if (input.title !== undefined) updates.title = input.title
+
+  db.update(sources).set(updates).where(eq(sources.id, sourceId)).run()
+
+  return db.select().from(sources).where(eq(sources.id, sourceId)).get()!
+}
+
+export function deleteChunksForSource(sourceId: string) {
+  db.delete(sourceChunks).where(eq(sourceChunks.sourceId, sourceId)).run()
+}
+
+export function insertSourceChunks(
+  chunks: Array<{
+    id: string
+    sourceId: string
+    chunkIndex: number
+    text: string
+    embedding: number[] | null
+    sourceTitle: string
+  }>
+) {
+  if (chunks.length === 0) return
+
+  db.insert(sourceChunks)
+    .values(
+      chunks.map((chunk) => ({
+        id: chunk.id,
+        sourceId: chunk.sourceId,
+        chunkIndex: chunk.chunkIndex,
+        text: chunk.text,
+        embedding: chunk.embedding,
+        sourceTitle: chunk.sourceTitle,
+      }))
+    )
+    .run()
+}
+
+export function listChunksForSources(sourceIds: string[]) {
+  if (sourceIds.length === 0) return []
+
+  return db
+    .select()
+    .from(sourceChunks)
+    .where(inArray(sourceChunks.sourceId, sourceIds))
+    .orderBy(sourceChunks.sourceId, sourceChunks.chunkIndex)
+    .all()
 }
 
 export function listNotebooksForUser(userId: string, limit?: number) {
@@ -258,9 +341,12 @@ export function listLibraryDocumentsForUser(userId: string) {
       enabled: sources.enabled,
       fileKey: sources.fileKey,
       fileUrl: sources.fileUrl,
+      sourceUrl: sources.sourceUrl,
       mimeType: sources.mimeType,
       originalName: sources.originalName,
       fileSize: sources.fileSize,
+      extractedText: sources.extractedText,
+      indexStatus: sources.indexStatus,
       notebookId: notebooks.id,
       notebookTitle: notebooks.title,
       notebookColor: notebooks.color,
@@ -352,10 +438,11 @@ export function createChatExchangeForNotebook(
   userId: string,
   input: {
     notebookId: string
-    userMessage: { id: string; content: string }
+    userMessage: { id: string; content: string; mode?: InteractionMode }
     assistantMessage: {
       id: string
       content: string
+      mode?: InteractionMode
       citations?: Array<{
         documentId: string
         documentTitle: string
@@ -382,6 +469,7 @@ export function createChatExchangeForNotebook(
       notebookId: input.notebookId,
       role: "user",
       content: input.userMessage.content,
+      mode: input.userMessage.mode ?? null,
       createdAt: now,
     })
     .run()
@@ -392,6 +480,7 @@ export function createChatExchangeForNotebook(
       notebookId: input.notebookId,
       role: "assistant",
       content: input.assistantMessage.content,
+      mode: input.assistantMessage.mode ?? null,
       citations: input.assistantMessage.citations ?? null,
       createdAt: now,
     })
@@ -619,4 +708,126 @@ export function deleteAllNotebooksForUser(userId: string) {
   db.delete(notebooks).where(eq(notebooks.userId, userId)).run()
 
   return { deletedCount: count }
+}
+
+export function createSavedNoteForNotebook(
+  userId: string,
+  input: {
+    id: string
+    notebookId: string
+    title: string
+    excerpt: string
+    body: string
+  }
+) {
+  const notebook = db
+    .select({ id: notebooks.id })
+    .from(notebooks)
+    .where(and(eq(notebooks.id, input.notebookId), eq(notebooks.userId, userId)))
+    .get()
+
+  if (!notebook) {
+    throw new Error("Notebook not found")
+  }
+
+  const now = new Date().toISOString()
+
+  db.insert(savedNotes)
+    .values({
+      id: input.id,
+      notebookId: input.notebookId,
+      title: input.title,
+      excerpt: input.excerpt,
+      body: input.body,
+      createdAt: now,
+    })
+    .run()
+
+  db.update(notebooks)
+    .set({ updatedAt: now })
+    .where(eq(notebooks.id, input.notebookId))
+    .run()
+
+  return db.select().from(savedNotes).where(eq(savedNotes.id, input.id)).get()!
+}
+
+export function updateSavedNoteForNotebook(
+  userId: string,
+  input: {
+    notebookId: string
+    noteId: string
+    title?: string
+    excerpt?: string
+    body?: string
+  }
+) {
+  const notebook = db
+    .select({ id: notebooks.id })
+    .from(notebooks)
+    .where(and(eq(notebooks.id, input.notebookId), eq(notebooks.userId, userId)))
+    .get()
+
+  if (!notebook) {
+    throw new Error("Notebook not found")
+  }
+
+  const existing = db
+    .select()
+    .from(savedNotes)
+    .where(
+      and(eq(savedNotes.id, input.noteId), eq(savedNotes.notebookId, input.notebookId))
+    )
+    .get()
+
+  if (!existing) {
+    throw new Error("Saved note not found")
+  }
+
+  const updates: { title?: string; excerpt?: string; body?: string } = {}
+  if (input.title !== undefined) updates.title = input.title
+  if (input.excerpt !== undefined) updates.excerpt = input.excerpt
+  if (input.body !== undefined) updates.body = input.body
+
+  if (Object.keys(updates).length > 0) {
+    db.update(savedNotes).set(updates).where(eq(savedNotes.id, input.noteId)).run()
+  }
+
+  return db.select().from(savedNotes).where(eq(savedNotes.id, input.noteId)).get()!
+}
+
+export function deleteSavedNoteForNotebook(
+  userId: string,
+  notebookId: string,
+  noteId: string
+) {
+  const notebook = db
+    .select({ id: notebooks.id })
+    .from(notebooks)
+    .where(and(eq(notebooks.id, notebookId), eq(notebooks.userId, userId)))
+    .get()
+
+  if (!notebook) {
+    throw new Error("Notebook not found")
+  }
+
+  const existing = db
+    .select()
+    .from(savedNotes)
+    .where(and(eq(savedNotes.id, noteId), eq(savedNotes.notebookId, notebookId)))
+    .get()
+
+  if (!existing) {
+    throw new Error("Saved note not found")
+  }
+
+  db.delete(savedNotes).where(eq(savedNotes.id, noteId)).run()
+
+  const now = new Date().toISOString()
+
+  db.update(notebooks)
+    .set({ updatedAt: now })
+    .where(eq(notebooks.id, notebookId))
+    .run()
+
+  return { id: noteId }
 }

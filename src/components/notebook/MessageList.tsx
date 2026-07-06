@@ -1,16 +1,22 @@
-import { Bot, User } from "lucide-react"
+import { Bot, StickyNote, User } from "lucide-react"
 import { TypingIndicator } from "@/components/motion"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { ChatMessage } from "@/types"
 
 interface MessageListProps {
   messages: ChatMessage[]
   isResponding: boolean
+  onSaveMessage?: (message: ChatMessage) => void
 }
 
-export function MessageList({ messages, isResponding }: MessageListProps) {
+export function MessageList({
+  messages,
+  isResponding,
+  onSaveMessage,
+}: MessageListProps) {
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-4 py-8">
       {messages.map((message) => (
@@ -44,9 +50,16 @@ export function MessageList({ messages, isResponding }: MessageListProps) {
               message.role === "user" && "items-end"
             )}
           >
-            <span className="text-[11px] font-medium text-muted-foreground">
-              {message.role === "assistant" ? "DocuNest" : "You"}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-medium text-muted-foreground">
+                {message.role === "assistant" ? "DocuNest" : "You"}
+              </span>
+              {message.mode && message.mode !== "qa" && (
+                <Badge variant="outline" className="h-5 px-1.5 text-[9px] font-normal">
+                  {message.mode}
+                </Badge>
+              )}
+            </div>
 
             <div
               className={cn(
@@ -58,6 +71,19 @@ export function MessageList({ messages, isResponding }: MessageListProps) {
             >
               <p className="whitespace-pre-wrap">{message.content}</p>
             </div>
+
+            {message.role === "assistant" && onSaveMessage && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 self-start px-2 text-[11px] text-muted-foreground"
+                onClick={() => onSaveMessage(message)}
+              >
+                <StickyNote className="size-3" />
+                Save to notes
+              </Button>
+            )}
 
             {message.citations && message.citations.length > 0 && (
               <div className="flex flex-wrap gap-1.5">

@@ -95,9 +95,12 @@ export interface SourceDocument {
   enabled: boolean
   fileKey?: string
   fileUrl?: string
+  sourceUrl?: string
   mimeType?: string
   originalName?: string
   fileSize?: number
+  extractedText?: string
+  indexStatus?: "pending" | "ready" | "failed"
 }
 
 export interface LibraryDocument extends SourceDocument {
@@ -116,6 +119,7 @@ export interface ChatMessage {
   id: string
   role: "user" | "assistant"
   content: string
+  mode?: InteractionMode
   citations?: Citation[]
   createdAt: string
 }
@@ -124,7 +128,14 @@ export interface SavedNote {
   id: string
   title: string
   excerpt: string
+  body: string
   createdAt: string
+}
+
+export interface ModeInfo {
+  id: InteractionMode
+  label: string
+  description: string
 }
 
 export interface StudioOutput {

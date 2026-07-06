@@ -1,14 +1,19 @@
 import "server-only"
 
 import type { SourceDocument } from "@/types"
-import { isMarkdownFile, isTextFile } from "@/lib/file-preview"
 
 const MAX_SOURCE_CHARS = 50_000
 
 export async function loadSourceText(source: SourceDocument) {
+  if (source.extractedText?.trim()) {
+    return source.extractedText.slice(0, MAX_SOURCE_CHARS)
+  }
+
   if (!source.fileUrl) {
     return source.description || null
   }
+
+  const { isMarkdownFile, isTextFile } = await import("@/lib/file-preview")
 
   if (isTextFile(source) || isMarkdownFile(source)) {
     try {

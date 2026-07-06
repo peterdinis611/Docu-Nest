@@ -5,7 +5,11 @@ import { useCallback, useRef, useState } from "react"
 import { FileText, Globe, Link2, Loader2, Upload } from "lucide-react"
 import { useAction } from "next-safe-action/hooks"
 import { toast } from "sonner"
-import { createSourceFromUploadAction } from "@/actions/sources"
+import {
+  createSourceFromPasteAction,
+  createSourceFromUploadAction,
+  createSourceFromUrlAction,
+} from "@/actions/sources"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -44,11 +48,26 @@ export function AddSourceDialog({
   const [internalOpen, setInternalOpen] = useState(false)
   const [sourceType, setSourceType] = useState<SourceType>(defaultTab)
   const [isDragging, setIsDragging] = useState(false)
+  const [urlValue, setUrlValue] = useState("")
+  const [pasteTitle, setPasteTitle] = useState("")
+  const [pasteText, setPasteText] = useState("")
   const isControlled = controlledOpen !== undefined
   const open = isControlled ? controlledOpen : internalOpen
   const setOpen = onOpenChange ?? setInternalOpen
 
-  const { executeAsync: saveUploadedSource, isExecuting: isSaving } = useAction(
+  const handleSourceSaved = useCallback(
+    (source: SourceDocument, label: string) => {
+      onSourceAdded?.(source)
+      toast.success(label, { description: `"${source.title}" was added to this notebook.` })
+      setOpen(false)
+      setUrlValue("")
+      setPasteTitle("")
+      setPasteText("")
+    },
+    [onSourceAdded, setOpen]
+  )
+
+  const { executeAsync: saveUploadedSource, isExecuting: isSavingUpload } = useAction(
     createSourceFromUploadAction,
     {
       onError: ({ error }) => {
@@ -56,6 +75,32 @@ export function AddSourceDialog({
           typeof error.serverError === "string"
             ? error.serverError
             : "Failed to save uploaded file."
+        )
+      },
+    }
+  )
+
+  const { executeAsync: savePasteSource, isExecuting: isSavingPaste } = useAction(
+    createSourceFromPasteAction,
+    {
+      onError: ({ error }) => {
+        toast.error(
+          typeof error.serverError === "string"
+            ? error.serverError
+            : "Failed to save pasted text."
+        )
+      },
+    }
+  )
+
+  const { executeAsync: saveUrlSource, isExecuting: isSavingUrl } = useAction(
+    createSourceFromUrlAction,
+    {
+      onError: ({ error }) => {
+        toast.error(
+          typeof error.serverError === "string"
+            ? error.serverError
+            : "Failed to import URL."
         )
       },
     }
@@ -75,30 +120,27 @@ export function AddSourceDialog({
           fileSize: file.size,
         })
 
-        if (result.data) {
-          saved.push(result.data)
-          onSourceAdded?.(result.data)
+        if (result.data?.source) {
+          saved.push(result.data.source)
         }
       }
 
       if (saved.length === 1) {
-        toast.success("Source uploaded", {
-          description: `"${saved[0].title}" was saved to this notebook.`,
-        })
+        handleSourceSaved(saved[0]!, "Source uploaded")
       } else if (saved.length > 1) {
+        saved.forEach((source) => onSourceAdded?.(source))
         toast.success("Sources uploaded", {
           description: `${saved.length} files were saved to this notebook.`,
         })
+        setOpen(false)
       }
-
-      setOpen(false)
     },
     onUploadError: (error) => {
       toast.error(error.message || "Upload failed. Please try again.")
     },
   })
 
-  const isBusy = isUploading || isSaving
+  const isBusy = isUploading || isSavingUpload || isSavingPaste || isSavingUrl
 
   const uploadFiles = useCallback(
     (files: FileList | File[]) => {
@@ -110,10 +152,40 @@ export function AddSourceDialog({
     [isBusy, notebookId, startUpload]
   )
 
+  const handlePasteSubmit = async () => {
+    if (!pasteText.trim() || isBusy) return
+
+    const result = await savePasteSource({
+      notebookId,
+      title: pasteTitle.trim() || undefined,
+      text: pasteText.trim(),
+    })
+
+    if (result.data?.source) {
+      handleSourceSaved(result.data.source, "Note added")
+    }
+  }
+
+  const handleUrlSubmit = async () => {
+    if (!urlValue.trim() || isBusy) return
+
+    const result = await saveUrlSource({
+      notebookId,
+      url: urlValue.trim(),
+    })
+
+    if (result.data?.source) {
+      handleSourceSaved(result.data.source, "URL imported")
+    }
+  }
+
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
       setSourceType(defaultTab)
       setIsDragging(false)
+      setUrlValue("")
+      setPasteTitle("")
+      setPasteText("")
     }
     setOpen(nextOpen)
   }
@@ -182,7 +254,7 @@ export function AddSourceDialog({
               <Upload className="mb-3 size-8 text-muted-foreground" />
             )}
             <p className="text-sm font-medium">
-              {isUploading ? "Uploading…" : isSaving ? "Saving…" : "Drop files here"}
+              {isUploading ? "Uploading…" : isSavingUpload ? "Indexing…" : "Drop files here"}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               PDF, DOCX, TXT, MD — up to 32 MB each
@@ -213,40 +285,85 @@ export function AddSourceDialog({
         )}
 
         {sourceType === "url" && (
-          <div className="space-y-2">
-            <label htmlFor="source-url" className="text-sm font-medium">
-              Website URL
-            </label>
-            <div className="relative">
-              <Globe className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="source-url"
-                placeholder="https://example.com/article"
-                className="pl-9"
-                disabled
-              />
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <label htmlFor="source-url" className="text-sm font-medium">
+                Website URL
+              </label>
+              <div className="relative">
+                <Globe className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="source-url"
+                  placeholder="https://example.com/article"
+                  className="pl-9"
+                  value={urlValue}
+                  disabled={isBusy}
+                  onChange={(event) => setUrlValue(event.target.value)}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                We extract the main article text and index it for chat.
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              URL imports are coming soon. Use Upload for now.
-            </p>
+            <Button
+              className="w-full"
+              disabled={isBusy || !urlValue.trim()}
+              onClick={() => void handleUrlSubmit()}
+            >
+              {isSavingUrl ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Importing…
+                </>
+              ) : (
+                "Import URL"
+              )}
+            </Button>
           </div>
         )}
 
         {sourceType === "paste" && (
-          <div className="space-y-2">
-            <label htmlFor="source-paste" className="text-sm font-medium">
-              Paste text
-            </label>
-            <textarea
-              id="source-paste"
-              rows={5}
-              placeholder="Paste article text, notes, or excerpts…"
-              disabled
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
-            />
-            <p className="text-xs text-muted-foreground">
-              Paste imports are coming soon. Use Upload for now.
-            </p>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <label htmlFor="source-paste-title" className="text-sm font-medium">
+                Title (optional)
+              </label>
+              <Input
+                id="source-paste-title"
+                placeholder="e.g. Meeting notes"
+                value={pasteTitle}
+                disabled={isBusy}
+                onChange={(event) => setPasteTitle(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="source-paste" className="text-sm font-medium">
+                Paste text
+              </label>
+              <textarea
+                id="source-paste"
+                rows={5}
+                placeholder="Paste article text, notes, or excerpts…"
+                disabled={isBusy}
+                value={pasteText}
+                onChange={(event) => setPasteText(event.target.value)}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+              />
+            </div>
+            <Button
+              className="w-full"
+              disabled={isBusy || !pasteText.trim()}
+              onClick={() => void handlePasteSubmit()}
+            >
+              {isSavingPaste ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                "Add note"
+              )}
+            </Button>
           </div>
         )}
 
@@ -254,7 +371,7 @@ export function AddSourceDialog({
           <Button
             variant="outline"
             onClick={() => handleOpenChange(false)}
-            disabled={isUploading}
+            disabled={isBusy}
           >
             Cancel
           </Button>

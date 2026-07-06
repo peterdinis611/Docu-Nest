@@ -35,6 +35,10 @@ npm run db:migrate    # apply migrations
 npm run db:seed       # seed with mock data
 ```
 
+After pulling schema changes (e.g. source indexing), run `npm run db:migrate` again.
+
+Sources are indexed on upload/import: PDF and DOCX text is extracted, chunked, and embedded into `source_chunks` when `OPENAI_API_KEY` is set.
+
 Other database commands:
 
 - `npm run db:push` — push schema directly (dev shortcut)

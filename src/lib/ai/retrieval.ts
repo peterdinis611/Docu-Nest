@@ -2,6 +2,7 @@ import "server-only"
 
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters"
 import { Document } from "@langchain/core/documents"
+import { listChunksForSources } from "@/db/queries"
 import type { SourceDocument } from "@/types"
 import { fileTypeLabels } from "@/lib/file-preview"
 import { loadSourceText } from "./load-source-text"
@@ -66,6 +67,27 @@ export async function chunkSourceTexts(
   return documents
 }
 
+function chunksToDocuments(
+  rows: Array<{
+    sourceId: string
+    sourceTitle: string
+    chunkIndex: number
+    text: string
+  }>
+) {
+  return rows.map(
+    (row) =>
+      new Document({
+        pageContent: `[Source Id: ${row.sourceId} | Title: ${row.sourceTitle} | Chunk ${row.chunkIndex + 1}]\n${row.text}`,
+        metadata: {
+          sourceId: row.sourceId,
+          sourceTitle: row.sourceTitle,
+          chunkIndex: row.chunkIndex,
+        },
+      })
+  )
+}
+
 export async function retrieveRelevantChunks(
   documents: Document[],
   query: string,
@@ -93,6 +115,64 @@ export async function retrieveRelevantChunks(
     .map((item) => item.doc)
 
   return { chunks: ranked, usedRag: true }
+}
+
+async function retrieveFromPersistedEmbeddings(
+  sourceIds: string[],
+  query: string,
+  topK: number
+) {
+  const rows = listChunksForSources(sourceIds).filter(
+    (row) => row.embedding && row.embedding.length > 0
+  )
+
+  if (rows.length === 0) {
+    return null
+  }
+
+  const embeddings = getEmbeddings()
+  const queryVector = await embeddings.embedQuery(query)
+
+  const ranked = rows
+    .map((row) => ({
+      row,
+      score: cosineSimilarity(queryVector, row.embedding!),
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK)
+
+  return chunksToDocuments(
+    ranked.map((item) => ({
+      sourceId: item.row.sourceId,
+      sourceTitle: item.row.sourceTitle,
+      chunkIndex: item.row.chunkIndex,
+      text: item.row.text,
+    }))
+  )
+}
+
+export async function retrieveForSources(
+  sources: SourceDocument[],
+  query: string,
+  topK = 8
+) {
+  const active = sources.filter((source) => source.enabled)
+  const sourceIds = active.map((source) => source.id)
+
+  if (sourceIds.length === 0) {
+    return { chunks: [] as Document[], usedRag: false }
+  }
+
+  if (isAiEnabled()) {
+    const persisted = await retrieveFromPersistedEmbeddings(sourceIds, query, topK)
+
+    if (persisted && persisted.length > 0) {
+      return { chunks: persisted, usedRag: true }
+    }
+  }
+
+  const { documents } = await loadAndChunkSources(active)
+  return retrieveRelevantChunks(documents, query, topK)
 }
 
 export function formatChunksForPrompt(chunks: Document[]) {

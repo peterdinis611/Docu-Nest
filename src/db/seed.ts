@@ -97,6 +97,7 @@ for (const note of mockSavedNotes) {
       notebookId: "nb-1",
       title: note.title,
       excerpt: note.excerpt,
+      body: note.excerpt,
       createdAt: note.createdAt,
     })
     .run()

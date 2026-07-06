@@ -8,7 +8,7 @@ import { isAiEnabled } from "./models"
 import {
   chunkSourceTexts,
   formatChunksForPrompt,
-  retrieveRelevantChunks,
+  retrieveForSources,
 } from "./retrieval"
 
 const STUDIO_RETRIEVAL_QUERIES: Record<StudioOutputType, string> = {
@@ -53,8 +53,8 @@ export async function buildStudioRagContext(
 
   try {
     const query = STUDIO_RETRIEVAL_QUERIES[outputType]
-    const { chunks: ranked, usedRag } = await retrieveRelevantChunks(
-      documents,
+    const { chunks: ranked, usedRag } = await retrieveForSources(
+      active,
       query,
       10
     )

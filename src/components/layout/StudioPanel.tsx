@@ -30,20 +30,26 @@ interface StudioPanelProps {
   studioOutputs: StudioOutput[]
   activeStudioOutput?: StudioOutput
   savedNotes: SavedNote[]
+  activeSavedNoteId?: string | null
   generatingStudioType: StudioOutputType | null
   enabledSourceCount: number
   onGenerate: (type: StudioOutputType) => void
   onSelectOutput: (id: string | null) => void
+  onSelectSavedNote?: (id: string) => void
+  onDeleteSavedNote?: (id: string) => void
 }
 
 export function StudioPanel({
   studioOutputs,
   activeStudioOutput,
   savedNotes,
+  activeSavedNoteId,
   generatingStudioType,
   enabledSourceCount,
   onGenerate,
   onSelectOutput,
+  onSelectSavedNote,
+  onDeleteSavedNote,
 }: StudioPanelProps) {
   return (
     <aside className="flex h-full w-80 shrink-0 flex-col border-l bg-card">
@@ -128,7 +134,12 @@ export function StudioPanel({
 
           <Separator />
 
-          <SavedNotesList notes={savedNotes} />
+          <SavedNotesList
+            notes={savedNotes}
+            activeNoteId={activeSavedNoteId}
+            onSelect={onSelectSavedNote}
+            onDelete={onDeleteSavedNote}
+          />
         </div>
       </ScrollArea>
     </aside>

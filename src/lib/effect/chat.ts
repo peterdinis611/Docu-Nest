@@ -7,10 +7,11 @@ import {
   getSourceForNotebook,
 } from "@/db/queries"
 import { answerDocumentChat, answerNotebookChat } from "@/lib/ai/chat"
+import { getModeConfig } from "@/lib/chat-modes"
 import { cacheTags } from "@/lib/cache-tags"
 import { NotFoundError } from "@/lib/effect/errors"
 import { mapChatMessage, mapSourceDocument } from "@/lib/notebook-mappers"
-import type { ChatMessage } from "@/types"
+import type { ChatMessage, InteractionMode } from "@/types"
 
 export const sendChatMessageEffect = Effect.fn("sendChatMessage")(function* (input: {
   userId: string
@@ -18,6 +19,7 @@ export const sendChatMessageEffect = Effect.fn("sendChatMessage")(function* (inp
   content: string
   userMessageId: string
   documentId?: string
+  mode?: InteractionMode
   history: Array<{ role: "user" | "assistant"; content: string }>
 }) {
   const notebook = getNotebookById(input.notebookId, input.userId)
@@ -54,6 +56,7 @@ export const sendChatMessageEffect = Effect.fn("sendChatMessage")(function* (inp
       answerDocumentChat({
         source,
         question: input.content,
+        mode: input.mode,
         history,
       })
     )
@@ -62,22 +65,27 @@ export const sendChatMessageEffect = Effect.fn("sendChatMessage")(function* (inp
       answerNotebookChat({
         sources,
         question: input.content,
+        mode: input.mode,
         history,
       })
     )
   }
 
   const assistantMessageId = crypto.randomUUID()
+  const mode = input.mode ?? "qa"
+  const userContent = input.content.trim() || getModeConfig(mode).label
 
   const exchange = createChatExchangeForNotebook(input.userId, {
     notebookId: input.notebookId,
     userMessage: {
       id: input.userMessageId,
-      content: input.content,
+      content: userContent,
+      mode,
     },
     assistantMessage: {
       id: assistantMessageId,
       content: result.answer,
+      mode,
       citations: result.citations,
     },
   })

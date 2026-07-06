@@ -46,9 +46,12 @@ export function mapSourceDocument(row: SourceRow): SourceDocument {
     enabled: row.enabled,
     fileKey: row.fileKey ?? undefined,
     fileUrl: row.fileUrl ?? undefined,
+    sourceUrl: row.sourceUrl ?? undefined,
     mimeType: row.mimeType ?? undefined,
     originalName: row.originalName ?? undefined,
     fileSize: row.fileSize ?? undefined,
+    extractedText: row.extractedText ?? undefined,
+    indexStatus: row.indexStatus,
   }
 }
 
@@ -72,6 +75,7 @@ export function mapChatMessage(row: MessageRow): ChatMessage {
     id: row.id,
     role: row.role,
     content: row.content,
+    mode: row.mode ?? undefined,
     citations: row.citations ?? undefined,
     createdAt: row.createdAt,
   }
@@ -82,6 +86,7 @@ export function mapSavedNote(row: SavedNoteRow): SavedNote {
     id: row.id,
     title: row.title,
     excerpt: row.excerpt,
+    body: row.body,
     createdAt: row.createdAt,
   }
 }

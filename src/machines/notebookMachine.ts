@@ -6,8 +6,10 @@ import {
   mockSourceGuide,
   mockSuggestedQuestions,
 } from "@/data/mock"
+import { getModeConfig } from "@/lib/chat-modes"
 import type {
   ChatMessage,
+  InteractionMode,
   Notebook,
   SavedNote,
   SourceDocument,
@@ -28,8 +30,10 @@ export interface NotebookContext {
   suggestedQuestions: string[]
   sourceGuide: string
   draft: string
+  interactionMode: InteractionMode
   isResponding: boolean
   generatingStudioType: StudioOutputType | null
+  activeSavedNoteId: string | null
   sourcesPanelOpen: boolean
   studioPanelOpen: boolean
 }
@@ -55,11 +59,15 @@ export type NotebookEvent =
   | { type: "FOCUS_CHAT_DOCUMENT"; documentId: string }
   | { type: "CLEAR_CHAT_DOCUMENT" }
   | { type: "SET_DRAFT"; draft: string }
+  | { type: "SET_INTERACTION_MODE"; mode: InteractionMode }
   | { type: "SEND_MESSAGE"; userMessageId: string }
   | { type: "ASK_SUGGESTED"; question: string; userMessageId: string }
   | { type: "MESSAGE_RESPONSE"; message: ChatMessage }
   | { type: "MESSAGE_FAILED" }
   | { type: "CLEAR_CHAT" }
+  | { type: "SAVED_NOTE_ADDED"; note: SavedNote }
+  | { type: "SAVED_NOTE_REMOVED"; noteId: string }
+  | { type: "SELECT_SAVED_NOTE"; noteId: string | null }
   | { type: "GENERATE_STUDIO"; outputType: StudioOutputType }
   | { type: "STUDIO_OUTPUT_READY"; output: StudioOutput }
   | { type: "STUDIO_GENERATION_FAILED" }
@@ -105,7 +113,9 @@ export const notebookMachine = setup({
       selectedDocumentId: () => null,
       chatDocumentId: () => null,
       activeStudioOutputId: () => null,
+      activeSavedNoteId: () => null,
       draft: () => "",
+      interactionMode: () => "qa" as InteractionMode,
       isResponding: () => false,
       generatingStudioType: () => null,
     }),
@@ -202,17 +212,27 @@ export const notebookMachine = setup({
       draft: ({ event }) =>
         event.type === "SET_DRAFT" ? event.draft : "",
     }),
+    setInteractionMode: assign({
+      interactionMode: ({ event }) =>
+        event.type === "SET_INTERACTION_MODE" ? event.mode : "qa",
+    }),
     appendUserMessage: assign({
       messages: ({ context, event }) => {
         if (event.type !== "SEND_MESSAGE") return context.messages
 
-        const text = context.draft.trim()
+        const text =
+          context.draft.trim() ||
+          (context.interactionMode !== "qa"
+            ? getModeConfig(context.interactionMode).label
+            : "")
+
         if (!text) return context.messages
 
         const userMessage: ChatMessage = {
           id: event.userMessageId,
           role: "user",
           content: text,
+          mode: context.interactionMode,
           createdAt: new Date().toISOString(),
         }
 
@@ -229,6 +249,7 @@ export const notebookMachine = setup({
           id: event.userMessageId,
           role: "user",
           content: event.question,
+          mode: "qa",
           createdAt: new Date().toISOString(),
         }
 
@@ -274,12 +295,49 @@ export const notebookMachine = setup({
     selectStudioOutput: assign({
       activeStudioOutputId: ({ event }) =>
         event.type === "SELECT_STUDIO_OUTPUT" ? event.outputId : null,
+      activeSavedNoteId: ({ context, event }) => {
+        if (event.type === "SELECT_STUDIO_OUTPUT" && event.outputId) return null
+        return context.activeSavedNoteId
+      },
       selectedDocumentId: ({ context, event }) => {
         if (event.type !== "SELECT_STUDIO_OUTPUT" || !event.outputId) {
           return context.selectedDocumentId
         }
 
         return null
+      },
+    }),
+    selectSavedNote: assign({
+      activeSavedNoteId: ({ event }) =>
+        event.type === "SELECT_SAVED_NOTE" ? event.noteId : null,
+      activeStudioOutputId: ({ context, event }) => {
+        if (event.type === "SELECT_SAVED_NOTE" && event.noteId) return null
+        return context.activeStudioOutputId
+      },
+      selectedDocumentId: ({ context, event }) => {
+        if (event.type !== "SELECT_SAVED_NOTE" || !event.noteId) {
+          return context.selectedDocumentId
+        }
+
+        return null
+      },
+    }),
+    addSavedNote: assign({
+      savedNotes: ({ context, event }) => {
+        if (event.type !== "SAVED_NOTE_ADDED") return context.savedNotes
+        return [event.note, ...context.savedNotes]
+      },
+    }),
+    removeSavedNote: assign({
+      savedNotes: ({ context, event }) => {
+        if (event.type !== "SAVED_NOTE_REMOVED") return context.savedNotes
+        return context.savedNotes.filter((note) => note.id !== event.noteId)
+      },
+      activeSavedNoteId: ({ context, event }) => {
+        if (event.type !== "SAVED_NOTE_REMOVED") return context.activeSavedNoteId
+        return context.activeSavedNoteId === event.noteId
+          ? null
+          : context.activeSavedNoteId
       },
     }),
     toggleSourcesPanel: assign({
@@ -305,8 +363,10 @@ export const notebookMachine = setup({
     suggestedQuestions: [],
     sourceGuide: "",
     draft: "",
+    interactionMode: "qa",
     isResponding: false,
     generatingStudioType: null,
+    activeSavedNoteId: null,
     sourcesPanelOpen: true,
     studioPanelOpen: true,
   },
@@ -330,12 +390,17 @@ export const notebookMachine = setup({
         FOCUS_CHAT_DOCUMENT: { actions: "focusChatDocument" },
         CLEAR_CHAT_DOCUMENT: { actions: "clearChatDocument" },
         SET_DRAFT: { actions: "setDraft" },
+        SET_INTERACTION_MODE: { actions: "setInteractionMode" },
         CLEAR_CHAT: { actions: "clearChat" },
         SELECT_STUDIO_OUTPUT: { actions: "selectStudioOutput" },
+        SELECT_SAVED_NOTE: { actions: "selectSavedNote" },
+        SAVED_NOTE_ADDED: { actions: "addSavedNote" },
+        SAVED_NOTE_REMOVED: { actions: "removeSavedNote" },
         TOGGLE_SOURCES_PANEL: { actions: "toggleSourcesPanel" },
         TOGGLE_STUDIO_PANEL: { actions: "toggleStudioPanel" },
         SEND_MESSAGE: {
-          guard: ({ context }) => context.draft.trim().length > 0,
+          guard: ({ context }) =>
+            context.draft.trim().length > 0 || context.interactionMode !== "qa",
           actions: "appendUserMessage",
         },
         ASK_SUGGESTED: {

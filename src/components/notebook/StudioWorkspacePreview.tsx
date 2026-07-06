@@ -1,6 +1,6 @@
 "use client"
 
-import { X } from "lucide-react"
+import { StickyNote, X } from "lucide-react"
 import { StudioContentView } from "@/components/notebook/studio/StudioContentView"
 import { Button } from "@/components/ui/button"
 import { parseStudioContent } from "@/lib/studio/content"
@@ -10,9 +10,14 @@ import type { StudioOutput } from "@/types"
 interface StudioWorkspacePreviewProps {
   output: StudioOutput
   onClose: () => void
+  onSaveNote?: () => void
 }
 
-export function StudioWorkspacePreview({ output, onClose }: StudioWorkspacePreviewProps) {
+export function StudioWorkspacePreview({
+  output,
+  onClose,
+  onSaveNote,
+}: StudioWorkspacePreviewProps) {
   const parsed = parseStudioContent(output.content, output.type)
 
   return (
@@ -37,6 +42,18 @@ export function StudioWorkspacePreview({ output, onClose }: StudioWorkspacePrevi
           <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
             {output.duration}
           </span>
+        )}
+        {onSaveNote && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-[11px]"
+            onClick={onSaveNote}
+          >
+            <StickyNote className="size-3.5" />
+            Save to notes
+          </Button>
         )}
       </div>
 

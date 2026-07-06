@@ -2,12 +2,13 @@ import "server-only"
 
 import { ChatPromptTemplate } from "@langchain/core/prompts"
 import { z } from "zod"
-import type { Citation, SourceDocument } from "@/types"
+import type { Citation, InteractionMode, SourceDocument } from "@/types"
+import { getModeSystemPrompt, resolveModePrompt } from "@/lib/chat-modes"
 import { getChatModel, isAiEnabled } from "./models"
 import {
   formatChunksForPrompt,
   loadAndChunkSources,
-  retrieveRelevantChunks,
+  retrieveForSources,
 } from "./retrieval"
 import { loadSourceText } from "./load-source-text"
 
@@ -17,13 +18,7 @@ const chatResponseSchema = z.object({
 })
 
 const chatPrompt = ChatPromptTemplate.fromMessages([
-  [
-    "system",
-    `You are DocuNest, a source-grounded research assistant.
-Answer ONLY using the provided document passages.
-If the answer is not in the passages, say clearly that the document does not cover it.
-Keep answers concise and practical.`,
-  ],
+  ["system", "{systemPrompt}"],
   [
     "human",
     `Document: {documentTitle}
@@ -34,9 +29,26 @@ Passages:
 Conversation:
 {history}
 
-Question: {question}
+Request: {question}
 
-Return a helpful answer grounded in the passages.`,
+Return a helpful response grounded in the passages.`,
+  ],
+])
+
+const notebookPrompt = ChatPromptTemplate.fromMessages([
+  ["system", "{systemPrompt}"],
+  [
+    "human",
+    `Passages from notebook sources:
+
+{context}
+
+Conversation:
+{history}
+
+Request: {question}
+
+Return a helpful response grounded in the passages.`,
   ],
 ])
 
@@ -51,10 +63,14 @@ function formatHistory(
     .join("\n")
 }
 
-function buildFallbackAnswer(source: SourceDocument, question: string, text: string) {
+function buildFallbackAnswer(
+  source: SourceDocument,
+  question: string,
+  text: string
+) {
   const excerpt = text.slice(0, 600)
   return {
-    answer: `Based on "${source.title}": ${excerpt}\n\n(This is a preview-based answer. Add OPENAI_API_KEY for full RAG responses.)\n\nYour question: ${question}`,
+    answer: `Based on "${source.title}": ${excerpt}\n\n(This is a preview-based answer. Add OPENAI_API_KEY for full RAG responses.)\n\nYour request: ${question}`,
     citations: [
       {
         documentId: source.id,
@@ -64,37 +80,35 @@ function buildFallbackAnswer(source: SourceDocument, question: string, text: str
   }
 }
 
-async function buildDocumentContext(source: SourceDocument, question: string) {
+async function buildDocumentContext(
+  source: SourceDocument,
+  question: string
+) {
   const text = (await loadSourceText(source)) ?? source.description
-  const { documents } = await loadAndChunkSources([source])
+  const { chunks, usedRag } = await retrieveForSources([source], question, 6)
 
-  if (documents.length === 0) {
+  if (chunks.length === 0) {
     return {
       contextText: text.slice(0, 4000),
       usedRag: false,
     }
   }
 
-  try {
-    const { chunks, usedRag } = await retrieveRelevantChunks(documents, question, 6)
-    return {
-      contextText: formatChunksForPrompt(chunks),
-      usedRag,
-    }
-  } catch {
-    return {
-      contextText: text.slice(0, 4000),
-      usedRag: false,
-    }
+  return {
+    contextText: formatChunksForPrompt(chunks),
+    usedRag,
   }
 }
 
 export async function answerDocumentChat(input: {
   source: SourceDocument
   question: string
+  mode?: InteractionMode
   history?: Array<{ role: "user" | "assistant"; content: string }>
 }) {
-  const { source, question, history = [] } = input
+  const { source, history = [] } = input
+  const mode = input.mode ?? "qa"
+  const question = resolveModePrompt(mode, input.question)
   const text = (await loadSourceText(source)) ?? source.description
 
   if (!isAiEnabled()) {
@@ -107,6 +121,7 @@ export async function answerDocumentChat(input: {
     const chain = chatPrompt.pipe(model)
 
     const result = await chain.invoke({
+      systemPrompt: getModeSystemPrompt(mode),
       documentTitle: source.title,
       context: contextText,
       history: formatHistory(history),
@@ -132,19 +147,23 @@ export async function answerDocumentChat(input: {
 export async function answerNotebookChat(input: {
   sources: SourceDocument[]
   question: string
+  mode?: InteractionMode
   history?: Array<{ role: "user" | "assistant"; content: string }>
 }) {
   const enabled = input.sources.filter((source) => source.enabled)
+  const mode = input.mode ?? "qa"
+  const question = resolveModePrompt(mode, input.question)
 
   if (enabled.length === 1) {
     return answerDocumentChat({
       source: enabled[0]!,
       question: input.question,
+      mode,
       history: input.history,
     })
   }
 
-  const { documents, loaded } = await loadAndChunkSources(enabled)
+  const { loaded } = await loadAndChunkSources(enabled)
   const fallbackSource = enabled[0]
 
   if (!isAiEnabled() || !fallbackSource) {
@@ -155,12 +174,16 @@ export async function answerNotebookChat(input: {
   }
 
   try {
-    const { chunks } = await retrieveRelevantChunks(documents, input.question, 8)
+    const { chunks } = await retrieveForSources(enabled, question, 8)
     const model = getChatModel().withStructuredOutput(chatResponseSchema)
+    const chain = notebookPrompt.pipe(model)
 
-    const result = await model.invoke(
-      `Answer using only these passages from notebook sources:\n\n${formatChunksForPrompt(chunks)}\n\nQuestion: ${input.question}`
-    )
+    const result = await chain.invoke({
+      systemPrompt: getModeSystemPrompt(mode),
+      context: formatChunksForPrompt(chunks),
+      history: formatHistory(input.history ?? []),
+      question,
+    })
 
     const citedSourceId = chunks[0]?.metadata.sourceId as string | undefined
     const citedSource = enabled.find((source) => source.id === citedSourceId)

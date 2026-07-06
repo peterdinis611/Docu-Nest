@@ -31,11 +31,32 @@ export const sources = sqliteTable("sources", {
   pageCount: integer("page_count"),
   fileKey: text("file_key"),
   fileUrl: text("file_url"),
+  sourceUrl: text("source_url"),
   mimeType: text("mime_type"),
   originalName: text("original_name"),
   fileSize: integer("file_size"),
+  extractedText: text("extracted_text"),
+  indexStatus: text("index_status", {
+    enum: ["pending", "ready", "failed"],
+  })
+    .notNull()
+    .default("pending"),
   enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
   uploadedAt: text("uploaded_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+})
+
+export const sourceChunks = sqliteTable("source_chunks", {
+  id: text("id").primaryKey(),
+  sourceId: text("source_id")
+    .notNull()
+    .references(() => sources.id, { onDelete: "cascade" }),
+  chunkIndex: integer("chunk_index").notNull(),
+  text: text("text").notNull(),
+  embedding: text("embedding", { mode: "json" }).$type<number[]>(),
+  sourceTitle: text("source_title").notNull(),
+  createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
 })
@@ -46,6 +67,9 @@ export const messages = sqliteTable("messages", {
     .notNull()
     .references(() => notebooks.id, { onDelete: "cascade" }),
   role: text("role", { enum: ["user", "assistant"] }).notNull(),
+  mode: text("mode", {
+    enum: ["qa", "summary", "deep-dive", "comparison", "quiz", "outline", "audio"],
+  }),
   content: text("content").notNull(),
   citations: text("citations", { mode: "json" }).$type<
     Array<{
@@ -66,6 +90,7 @@ export const savedNotes = sqliteTable("saved_notes", {
     .references(() => notebooks.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   excerpt: text("excerpt").notNull(),
+  body: text("body").notNull().default(""),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
@@ -105,10 +130,18 @@ export const notebooksRelations = relations(notebooks, ({ many }) => ({
   studioOutputs: many(studioOutputs),
 }))
 
-export const sourcesRelations = relations(sources, ({ one }) => ({
+export const sourcesRelations = relations(sources, ({ one, many }) => ({
   notebook: one(notebooks, {
     fields: [sources.notebookId],
     references: [notebooks.id],
+  }),
+  chunks: many(sourceChunks),
+}))
+
+export const sourceChunksRelations = relations(sourceChunks, ({ one }) => ({
+  source: one(sources, {
+    fields: [sourceChunks.sourceId],
+    references: [sources.id],
   }),
 }))
 
@@ -135,6 +168,8 @@ export const studioOutputsRelations = relations(studioOutputs, ({ one }) => ({
 
 export type NotebookRow = typeof notebooks.$inferSelect
 export type SourceRow = typeof sources.$inferSelect
+export type SourceChunkRow = typeof sourceChunks.$inferSelect
 export type MessageRow = typeof messages.$inferSelect
 export type SavedNoteRow = typeof savedNotes.$inferSelect
 export type StudioOutputRow = typeof studioOutputs.$inferSelect
+export type IndexStatus = "pending" | "ready" | "failed"

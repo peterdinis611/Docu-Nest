@@ -3,13 +3,34 @@ import { SourcesPanel } from "@/components/layout/SourcesPanel"
 import { ChatPanel } from "@/components/layout/ChatPanel"
 import { StudioPanel } from "@/components/layout/StudioPanel"
 import type { useNotebook } from "@/hooks/useNotebook"
+import type { ChatMessage, StudioOutput } from "@/types"
 import { cn } from "@/lib/utils"
 
 interface AppShellProps {
   notebook: ReturnType<typeof useNotebook>
 }
 
+function noteTitleFromContent(content: string, fallback = "Saved note") {
+  const line = content.trim().split("\n")[0]?.trim() ?? ""
+  if (!line) return fallback
+  return line.length > 48 ? `${line.slice(0, 47)}…` : line
+}
+
 export function AppShell({ notebook }: AppShellProps) {
+  const handleSaveMessage = (message: ChatMessage) => {
+    void notebook.saveNote({
+      title: noteTitleFromContent(message.content, "Chat note"),
+      body: message.content,
+    })
+  }
+
+  const handleSaveStudioOutput = (output: StudioOutput) => {
+    void notebook.saveNote({
+      title: output.title,
+      body: output.content,
+    })
+  }
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
       <TopBar
@@ -51,15 +72,21 @@ export function AppShell({ notebook }: AppShellProps) {
           suggestedQuestions={notebook.suggestedQuestions}
           sourceGuide={notebook.sourceGuide}
           draft={notebook.draft}
+          interactionMode={notebook.interactionMode}
           isResponding={notebook.isResponding}
           selectedDocumentId={notebook.selectedDocumentId}
           chatDocument={notebook.chatDocument}
           activeMainStudioOutput={notebook.activeMainStudioOutput}
+          activeSavedNote={notebook.activeSavedNote}
           onDraftChange={notebook.setDraft}
+          onInteractionModeChange={notebook.setInteractionMode}
           onSend={notebook.sendMessage}
+          onSaveMessage={handleSaveMessage}
+          onSaveStudioOutput={handleSaveStudioOutput}
           onAskSuggested={notebook.askSuggested}
           onClosePreview={() => notebook.selectDocument(null)}
           onCloseMainStudio={() => notebook.selectStudioOutput(null)}
+          onCloseSavedNote={() => notebook.selectSavedNote(null)}
           onSelectDocument={notebook.selectDocument}
           onClearChatDocument={notebook.clearChatDocument}
           onFocusChatDocument={notebook.focusChatDocument}
@@ -79,10 +106,13 @@ export function AppShell({ notebook }: AppShellProps) {
             studioOutputs={notebook.studioOutputs}
             activeStudioOutput={notebook.activeStudioOutput}
             savedNotes={notebook.savedNotes}
+            activeSavedNoteId={notebook.activeSavedNoteId}
             generatingStudioType={notebook.generatingStudioType}
             enabledSourceCount={notebook.enabledCount}
             onGenerate={notebook.generateStudio}
             onSelectOutput={notebook.selectStudioOutput}
+            onSelectSavedNote={(id) => notebook.selectSavedNote(id)}
+            onDeleteSavedNote={(id) => void notebook.deleteSavedNote(id)}
           />
         </div>
       </div>

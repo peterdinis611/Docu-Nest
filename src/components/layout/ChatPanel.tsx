@@ -2,13 +2,15 @@ import { MessageSquare, Sparkles, Trash2 } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ChatFocusBanner } from "@/components/notebook/ChatFocusBanner"
 import { ChatInput } from "@/components/notebook/ChatInput"
+import { ModePicker, getModePlaceholder } from "@/components/notebook/ModePicker"
 import { Button } from "@/components/ui/button"
 import { DocumentPreview } from "@/components/notebook/DocumentPreview"
 import { StudioWorkspacePreview } from "@/components/notebook/StudioWorkspacePreview"
+import { SavedNotePreview } from "@/components/notebook/SavedNotePreview"
 import { MessageList } from "@/components/notebook/MessageList"
 import { SourceGuide } from "@/components/notebook/SourceGuide"
 import { SuggestedChips } from "@/components/notebook/SuggestedChips"
-import type { ChatMessage, SourceDocument, StudioOutput } from "@/types"
+import type { ChatMessage, InteractionMode, SavedNote, SourceDocument, StudioOutput } from "@/types"
 
 interface ChatPanelProps {
   documents: SourceDocument[]
@@ -16,15 +18,21 @@ interface ChatPanelProps {
   suggestedQuestions: string[]
   sourceGuide: string
   draft: string
+  interactionMode: InteractionMode
   isResponding: boolean
   selectedDocumentId: string | null
   chatDocument?: SourceDocument
   activeMainStudioOutput?: StudioOutput
+  activeSavedNote?: SavedNote
   onDraftChange: (draft: string) => void
+  onInteractionModeChange: (mode: InteractionMode) => void
   onSend: () => void
+  onSaveMessage?: (message: ChatMessage) => void
+  onSaveStudioOutput?: (output: StudioOutput) => void
   onAskSuggested: (question: string) => void
   onClosePreview: () => void
   onCloseMainStudio: () => void
+  onCloseSavedNote: () => void
   onSelectDocument: (id: string | null) => void
   onClearChatDocument: () => void
   onFocusChatDocument?: (id: string) => void
@@ -40,15 +48,21 @@ export function ChatPanel({
   suggestedQuestions,
   sourceGuide,
   draft,
+  interactionMode,
   isResponding,
   selectedDocumentId,
   chatDocument,
   activeMainStudioOutput,
+  activeSavedNote,
   onDraftChange,
+  onInteractionModeChange,
   onSend,
+  onSaveMessage,
+  onSaveStudioOutput,
   onAskSuggested,
   onClosePreview,
   onCloseMainStudio,
+  onCloseSavedNote,
   onSelectDocument,
   onClearChatDocument,
   onFocusChatDocument,
@@ -81,7 +95,14 @@ export function ChatPanel({
         <StudioWorkspacePreview
           output={activeMainStudioOutput}
           onClose={onCloseMainStudio}
+          onSaveNote={
+            onSaveStudioOutput
+              ? () => onSaveStudioOutput(activeMainStudioOutput)
+              : undefined
+          }
         />
+      ) : activeSavedNote ? (
+        <SavedNotePreview note={activeSavedNote} onClose={onCloseSavedNote} />
       ) : (
         <>
           {chatDocument && (
@@ -128,36 +149,49 @@ export function ChatPanel({
                 </p>
               </div>
             ) : (
-              <MessageList messages={messages} isResponding={isResponding} />
+              <MessageList
+                messages={messages}
+                isResponding={isResponding}
+                onSaveMessage={onSaveMessage}
+              />
             )}
           </ScrollArea>
 
-          <ChatInput
-            draft={draft}
-            isResponding={isResponding}
-            placeholder={
-              chatDocument
-                ? `Ask about "${chatDocument.title}"…`
-                : "Ask about your sources…"
-            }
-            onDraftChange={onDraftChange}
-            onSend={onSend}
-            trailing={
-              messages.length > 0 && onClearChat ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 gap-1.5 text-[11px] text-muted-foreground"
-                  onClick={onClearChat}
-                  disabled={isResponding}
-                >
-                  <Trash2 className="size-3" />
-                  Clear chat
-                </Button>
-              ) : null
-            }
-          />
+          <div className="border-t bg-background/95 px-4 py-3 backdrop-blur">
+            <ModePicker
+              value={interactionMode}
+              onChange={onInteractionModeChange}
+              disabled={isResponding}
+            />
+            <div className="mt-2">
+              <ChatInput
+                draft={draft}
+                isResponding={isResponding}
+                placeholder={
+                  chatDocument
+                    ? `Ask about "${chatDocument.title}"…`
+                    : getModePlaceholder(interactionMode)
+                }
+                onDraftChange={onDraftChange}
+                onSend={onSend}
+                trailing={
+                  messages.length > 0 && onClearChat ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1.5 text-[11px] text-muted-foreground"
+                      onClick={onClearChat}
+                      disabled={isResponding}
+                    >
+                      <Trash2 className="size-3" />
+                      Clear chat
+                    </Button>
+                  ) : null
+                }
+              />
+            </div>
+          </div>
         </>
       )}
     </main>

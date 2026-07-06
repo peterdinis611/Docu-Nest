@@ -2,14 +2,14 @@
 
 import { updateTag } from "next/cache"
 import { z } from "zod"
-import { createSourceForNotebook } from "@/db/queries"
 import {
+  createAndIndexSourceEffect,
   deleteSourceEffect,
   runServerEffect,
   updateSourceEffect,
 } from "@/lib/effect"
 import { cacheTags } from "@/lib/cache-tags"
-import { mapSourceDocument } from "@/lib/notebook-mappers"
+import { excerptFromText, extractUrlText } from "@/lib/text-extraction"
 import { inferDocumentType, titleFromFileName } from "@/lib/source-utils"
 import { authActionClient } from "@/lib/safe-action"
 
@@ -33,39 +33,76 @@ const updateSourceSchema = sourceIdSchema.extend({
   enabled: z.boolean().optional(),
 })
 
+const createSourceFromPasteSchema = z.object({
+  notebookId: z.string().min(1),
+  title: z.string().trim().min(1).max(255).optional(),
+  text: z.string().trim().min(1).max(500_000),
+})
+
+const createSourceFromUrlSchema = z.object({
+  notebookId: z.string().min(1),
+  url: z.string().url().max(2000),
+})
+
 export const createSourceFromUploadAction = authActionClient
   .inputSchema(createSourceFromUploadSchema)
-  .action(
-    async ({
-      parsedInput: {
-        notebookId,
-        uploadthingFileId,
-        fileUrl,
-        originalName,
-        mimeType,
-        fileSize,
-      },
-      ctx: { userId },
-    }) => {
-      const row = createSourceForNotebook(userId, {
+  .action(async ({ parsedInput, ctx: { userId } }) =>
+    runServerEffect(
+      createAndIndexSourceEffect({
+        userId,
         id: crypto.randomUUID(),
-        notebookId,
-        title: titleFromFileName(originalName),
-        type: inferDocumentType(originalName, mimeType),
-        uploadthingFileId,
-        fileUrl,
-        mimeType,
-        originalName,
-        fileSize,
+        notebookId: parsedInput.notebookId,
+        title: titleFromFileName(parsedInput.originalName),
+        type: inferDocumentType(parsedInput.originalName, parsedInput.mimeType),
+        uploadthingFileId: parsedInput.uploadthingFileId,
+        fileUrl: parsedInput.fileUrl,
+        mimeType: parsedInput.mimeType,
+        originalName: parsedInput.originalName,
+        fileSize: parsedInput.fileSize,
       })
-
-      updateTag(cacheTags.userNotebook(userId, notebookId))
-      updateTag(cacheTags.userNotebooks(userId))
-      updateTag(cacheTags.userAnalytics(userId))
-
-      return mapSourceDocument(row)
-    }
+    )
   )
+
+export const createSourceFromPasteAction = authActionClient
+  .inputSchema(createSourceFromPasteSchema)
+  .action(async ({ parsedInput, ctx: { userId } }) => {
+    const title =
+      parsedInput.title?.trim() ||
+      excerptFromText(parsedInput.text, 48) ||
+      "Pasted note"
+
+    return runServerEffect(
+      createAndIndexSourceEffect({
+        userId,
+        id: crypto.randomUUID(),
+        notebookId: parsedInput.notebookId,
+        title,
+        type: "note",
+        description: excerptFromText(parsedInput.text),
+        extractedText: parsedInput.text,
+      })
+    )
+  })
+
+export const createSourceFromUrlAction = authActionClient
+  .inputSchema(createSourceFromUrlSchema)
+  .action(async ({ parsedInput, ctx: { userId } }) => {
+    const extracted = await extractUrlText(parsedInput.url)
+
+    return runServerEffect(
+      createAndIndexSourceEffect({
+        userId,
+        id: crypto.randomUUID(),
+        notebookId: parsedInput.notebookId,
+        title: extracted.title ?? parsedInput.url,
+        type: "webpage",
+        description: excerptFromText(extracted.text),
+        sourceUrl: parsedInput.url,
+        fileUrl: parsedInput.url,
+        extractedText: extracted.text,
+      })
+    )
+  })
 
 export const updateSourceAction = authActionClient
   .inputSchema(updateSourceSchema)
@@ -78,6 +115,7 @@ export const updateSourceAction = authActionClient
         title: parsedInput.title,
         description: parsedInput.description,
         enabled: parsedInput.enabled,
+        reindex: parsedInput.description !== undefined,
       })
     )
   )
@@ -110,3 +148,20 @@ export const deleteSourceAction = authActionClient
       })
     )
   )
+
+export const reindexSourceAction = authActionClient
+  .inputSchema(sourceIdSchema)
+  .action(async ({ parsedInput, ctx: { userId } }) => {
+    const result = await runServerEffect(
+      updateSourceEffect({
+        userId,
+        notebookId: parsedInput.notebookId,
+        sourceId: parsedInput.sourceId,
+        reindex: true,
+      })
+    )
+
+    updateTag(cacheTags.userNotebook(userId, parsedInput.notebookId))
+
+    return result
+  })
