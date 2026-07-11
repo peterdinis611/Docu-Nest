@@ -6,6 +6,8 @@ declare global {
       hasTestCredentials(): Chainable<boolean>
       openGlobalSearch(): Chainable<void>
       uniqueTestName(prefix: string): Chainable<string>
+      visitNotebookWorkspace(): Chainable<void>
+      createNotebook(title: string, description?: string): Chainable<void>
     }
   }
 }
@@ -60,6 +62,39 @@ Cypress.Commands.add("openGlobalSearch", () => {
 
 Cypress.Commands.add("uniqueTestName", (prefix: string) => {
   return cy.wrap(`${prefix} ${Date.now()}`)
+})
+
+Cypress.Commands.add("createNotebook", (title: string, description?: string) => {
+  cy.contains("button", "New notebook").click()
+
+  cy.get('[role="dialog"]').within(() => {
+    cy.get("#notebook-title").clear().type(title)
+    if (description) {
+      cy.get("#notebook-desc").clear().type(description)
+    }
+    cy.contains("button", "Create").click()
+  })
+
+  cy.url({ timeout: 15000 }).should("match", /\/notebook\/.+/)
+})
+
+Cypress.Commands.add("visitNotebookWorkspace", () => {
+  cy.visit("/app")
+
+  cy.get("body").then(($body) => {
+    const href = $body.find('a[href^="/notebook/"]').first().attr("href")
+
+    if (href) {
+      cy.visit(href)
+      return
+    }
+
+    cy.uniqueTestName("E2E Workspace").then((title) => {
+      cy.createNotebook(title, "Opened by Cypress for workspace tests")
+    })
+  })
+
+  cy.url({ timeout: 15000 }).should("match", /\/notebook\/.+/)
 })
 
 export {}

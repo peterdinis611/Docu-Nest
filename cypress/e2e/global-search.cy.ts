@@ -31,4 +31,10 @@ describe("Global search", () => {
     cy.get("body").type("{esc}")
     cy.get('[role="dialog"]').should("not.exist")
   })
+
+  it("opens with the keyboard shortcut", () => {
+    cy.get("body").type("{meta}k")
+    cy.get('[role="dialog"]').should("be.visible")
+    cy.get('input[placeholder*="Search notebooks"]').should("be.visible")
+  })
 })

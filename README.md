@@ -68,15 +68,19 @@ Tests live in `cypress/e2e/`:
 
 | Spec | Coverage |
 |------|----------|
-| `landing.cy.ts` | Sign-in page, auth redirect, protected routes |
+| `landing.cy.ts` | Sign-in page, Clerk form, theme, mobile, auth guards for all routes |
 | `app-navigation.cy.ts` | Sidebar navigation between app pages |
-| `home.cy.ts` | Dashboard sections, create notebook dialog |
+| `sidebar.cy.ts` | Sidebar collapse, logo, search shortcut, theme footer |
+| `home.cy.ts` | Dashboard sections, create notebook dialog, recent activity |
 | `library.cy.ts` | Search, filters, grid/list view |
+| `library-extended.cy.ts` | Sort and filter menus |
 | `analytics.cy.ts` | Metrics cards and analytics tabs |
-| `global-search.cy.ts` | ⌘K search dialog, results, keyboard close |
+| `global-search.cy.ts` | ⌘K search dialog, results, keyboard shortcuts |
 | `settings.cy.ts` | Settings section navigation |
 | `settings-extended.cy.ts` | Theme toggle, usage stats, data actions |
-| `notebook.cy.ts` | End-to-end notebook creation |
+| `profile.cy.ts` | Profile form and account actions |
+| `notebook.cy.ts` | Notebook creation and cancel flow |
+| `notebook-workspace.cy.ts` | Workspace panels, share dialog, studio, chat |
 | `not-found.cy.ts` | App and notebook 404 pages |
 
 The landing page test runs without credentials. Authenticated tests use [@clerk/testing](https://clerk.com/docs/guides/development/testing/cypress/overview) and require a Clerk test user with password sign-in enabled.
